@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  SUPER_ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?   // Nullable for OAuth-only users
+  role          Role      @default(ADMIN)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+}
+
+// ─── Auth.js required models ───
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ─── Product Catalog ───
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String   @default("Jersey")
+  basePrice   Float
+  reorderLevel Int     @default(10)
+  image       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants Variant[]
+}
+
+// ─── Product Variants (Size / Color combos with unique SKU) ───
+model Variant {
+  id              String  @id @default(cuid())
+  productId       String
+  size            String
+  color           String  
+  sku             String  @unique
+  image           String?
+  priceAdjustment Float   @default(0)
+
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stock     InventoryStock?
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Inventory Stock per Variant ───
+model InventoryStock {
+  id            String   @id @default(cuid())
+  variantId     String   @unique
+  quantity      Int      @default(0)
+  reorderLevel  Int      @default(10) // Threshold for low-stock alerts
+  lastRestocked DateTime?
+
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Orders ───
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum SalesChannel {
+  DIRECT
+  SHOPEE
+  LAZADA
+  TIKTOK
+  OTHER
+}
+
+model Order {
+  id            String       @id @default(cuid())
+  customerName  String
+  customerEmail String?
+  customerPhone String?
+  status        OrderStatus  @default(PENDING)
+  salesChannel  SalesChannel @default(DIRECT)
+  channelFee    Float        @default(0) // Platform commission deducted
+  totalAmount   Float                    // Total before channel fee
+  netAmount     Float        @default(0) // Total after channel fee deduction
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  items        OrderItem[]
+  transactions Transaction[]
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  variantId     String
+  quantity      Int
+  unitPrice     Float
+  adjustedPrice Float?  // Admin-set override price (e.g. bulk discount)
+  subtotal      Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Transactions / Payments ───
+enum TransactionType {
+  PAYMENT
+  REFUND
+}
+
+enum PaymentMethod {
+  CASH
+  GCASH
+  BANK_TRANSFER
+  CREDIT_CARD
+  OTHER
+}
+
+model Transaction {
+  id        String          @id @default(cuid())
+  orderId   String
+  amount    Float
+  type      TransactionType @default(PAYMENT)
+  method    PaymentMethod   @default(CASH)
+  reference String?
+  createdAt DateTime        @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}

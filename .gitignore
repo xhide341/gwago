@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prisma
+/generated
+/generated/
+
+# md files
+goals.md
+future-plans.md
+project-gap-review.md
