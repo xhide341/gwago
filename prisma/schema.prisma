@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -91,6 +91,7 @@ model Variant {
   sku             String  @unique
   image           String?
   priceAdjustment Float   @default(0)
+  isActive        Boolean @default(true)
 
   product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   stock     InventoryStock?

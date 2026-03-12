@@ -1,0 +1,2 @@
+ALTER TABLE "Variant"
+ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true;
