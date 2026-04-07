@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Menu,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { handleSignOut } from "@/actions/auth";
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes },
+  { href: "/admin/archived", label: "Archives", icon: Archive },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -39,7 +41,7 @@ interface SidebarProps {
 // Reusable nav link list for both desktop and mobile
 function NavLinks({ pathname }: { pathname: string }) {
   return (
-    <nav className="flex-1 space-y-1 px-3 py-4">
+    <nav className="flex-1 space-y-1 pr-3 pl-1 py-4">
       {navItems.map((item) => {
         const isActive =
           item.href === "/admin"
@@ -51,7 +53,7 @@ function NavLinks({ pathname }: { pathname: string }) {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium transition-colors",
               isActive
                 ? "bg-zinc-800 text-white"
                 : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white",
@@ -114,7 +116,7 @@ export function Sidebar({ user }: SidebarProps) {
           <Button
             variant="ghost"
             type="submit"
-            className="mt-1 w-full justify-start gap-3 px-3 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+            className="mt-1 w-full justify-start gap-3 bg-zinc-900 cursor-pointer px-3 text-zinc-200 hover:bg-zinc-800 hover:text-white"
           >
             <LogOut className="h-4 w-4" />
             Sign Out
