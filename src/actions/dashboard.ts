@@ -131,7 +131,7 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
     productCategories.map((p) => [p.category, { count: 0, revenue: 0 }]),
   );
   for (const oi of orderItems) {
-    const cat = oi.variant.product.category;
+    const cat = oi.variant?.product.category ?? "Uncategorized";
     const entry = catMap.get(cat) ?? { count: 0, revenue: 0 };
     entry.count += oi.quantity;
     entry.revenue += oi.subtotal;
@@ -140,7 +140,9 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
 
   const categoryBreakdown: CategoryBreakdown[] = [...catMap.entries()]
     .map(([category, { count, revenue }]) => ({ category, count, revenue }))
-    .sort((a, b) => b.revenue - a.revenue || a.category.localeCompare(b.category));
+    .sort(
+      (a, b) => b.revenue - a.revenue || a.category.localeCompare(b.category),
+    );
 
   // --- Payment method distribution ---
   const methodGroups = await prisma.transaction.groupBy({

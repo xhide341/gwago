@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getVariantDeleteDecision } from "@/lib/catalog-delete";
 
 async function requireAuth() {
   const session = await auth();
@@ -14,6 +15,12 @@ async function requireAuth() {
 export async function getInventory() {
   await requireAuth();
   return prisma.inventoryStock.findMany({
+    where: {
+      variant: {
+        isActive: true,
+        product: { isActive: true },
+      },
+    },
     include: {
       variant: {
         include: { product: true },
@@ -27,6 +34,12 @@ export async function getInventory() {
 export async function getLowStockAlerts() {
   await requireAuth();
   const stocks = await prisma.inventoryStock.findMany({
+    where: {
+      variant: {
+        isActive: true,
+        product: { isActive: true },
+      },
+    },
     include: {
       variant: {
         include: { product: true },
@@ -104,25 +117,85 @@ export async function updateVariantFromInventory(
 }
 
 // Delete a variant and its inventory stock
-export async function deleteVariantFromInventory(variantId: string) {
+export async function deleteVariantFromInventory(variantId: string): Promise<{
+  status: "deleted" | "archived" | "blocked";
+  message: string;
+}> {
   await requireAuth();
 
-  const linkedOrderItems = await prisma.orderItem.count({
-    where: { variantId },
-  });
+  const decision = await getVariantDeleteDecision(variantId);
 
-  if (linkedOrderItems > 0) {
-    throw new Error(
-      "Cannot delete this variant because it is referenced by existing orders.",
-    );
+  if (decision.status === "blocked") {
+    return {
+      status: "blocked",
+      message: decision.message,
+    };
   }
 
-  // Variant delete cascades to InventoryStock
-  await prisma.variant.delete({ where: { id: variantId } });
+  if (decision.status === "archived") {
+    await prisma.variant.update({
+      where: { id: variantId },
+      data: {
+        isActive: false,
+        archivedAt: new Date(),
+      },
+    });
+
+    revalidatePath("/admin/inventory");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/archived");
+    revalidatePath("/admin");
+
+    return {
+      status: "archived",
+      message: decision.message,
+    };
+  }
+
+  try {
+    await prisma.variant.delete({ where: { id: variantId } });
+  } catch {
+    const retryDecision = await getVariantDeleteDecision(variantId);
+
+    if (retryDecision.status === "archived") {
+      await prisma.variant.update({
+        where: { id: variantId },
+        data: {
+          isActive: false,
+          archivedAt: new Date(),
+        },
+      });
+
+      revalidatePath("/admin/inventory");
+      revalidatePath("/admin/products");
+      revalidatePath("/admin/archived");
+      revalidatePath("/admin");
+      return {
+        status: "archived",
+        message:
+          "This variant became historically referenced while deleting, so it was archived instead.",
+      };
+    }
+
+    if (retryDecision.status === "blocked") {
+      return {
+        status: "blocked",
+        message: retryDecision.message,
+      };
+    }
+
+    throw new Error("Unable to delete this variant right now.");
+  }
 
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/products");
+  revalidatePath("/admin/archived");
   revalidatePath("/admin");
+
+  return {
+    status: "deleted",
+    message: "Variant deleted.",
+  };
 }
 
 // Get low stock count for dashboard
@@ -130,6 +203,12 @@ export async function getLowStockCount() {
   await requireAuth();
 
   const stocks = await prisma.inventoryStock.findMany({
+    where: {
+      variant: {
+        isActive: true,
+        product: { isActive: true },
+      },
+    },
     select: {
       quantity: true,
       reorderLevel: true,

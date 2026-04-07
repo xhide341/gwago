@@ -3,7 +3,12 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { OrderStatus, PaymentMethod, SalesChannel, Prisma } from "@/lib/prisma";
+import {
+  OrderStatus,
+  PaymentMethod,
+  Prisma,
+  SalesChannel,
+} from "@/generated/prisma/client";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -15,17 +20,37 @@ type OrderItemInput = {
   adjustedPrice?: number | null;
 };
 
+type UpdateOrderItemInput = {
+  id?: string;
+  variantId: string | null;
+  quantity: number;
+  unitPrice: number;
+  adjustedPrice?: number | null;
+  productIdSnapshot?: string | null;
+  productNameSnapshot?: string | null;
+  variantName?: string | null;
+  variantSku?: string | null;
+  variantSize?: string | null;
+  variantColor?: string | null;
+};
+
 async function requireAuth() {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
   return session;
 }
 
-function validateOrderItems(items: OrderItemInput[]) {
-  if (items.length === 0) throw new Error("Order must contain at least one item");
+function validateOrderItems(
+  items: Array<{ variantId: string | null; quantity: number }>,
+  allowMissingVariant = false,
+) {
+  if (items.length === 0)
+    throw new Error("Order must contain at least one item");
 
   for (const item of items) {
-    if (!item.variantId) throw new Error("Invalid variant");
+    if (!allowMissingVariant && !item.variantId) {
+      throw new Error("Invalid variant");
+    }
     if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
       throw new Error("Item quantity must be greater than 0");
     }
@@ -102,12 +127,14 @@ export async function generateUniquePaymentReference() {
 }
 
 function buildQuantityMap(
-  items: Array<{ variantId: string; quantity: number }>,
+  items: Array<{ variantId: string | null; quantity: number }>,
   multiplier = 1,
 ) {
   const map = new Map<string, number>();
 
   for (const item of items) {
+    // Skip items whose variant has been permanently deleted (variantId is null)
+    if (!item.variantId) continue;
     const prev = map.get(item.variantId) ?? 0;
     map.set(item.variantId, prev + item.quantity * multiplier);
   }
@@ -115,11 +142,52 @@ function buildQuantityMap(
   return map;
 }
 
-function addMapValues(target: Map<string, number>, source: Map<string, number>) {
+function addMapValues(
+  target: Map<string, number>,
+  source: Map<string, number>,
+) {
   for (const [variantId, quantity] of source) {
     const prev = target.get(variantId) ?? 0;
     target.set(variantId, prev + quantity);
   }
+}
+
+function buildOrderItemSnapshot(
+  item: {
+    variantId: string | null;
+    quantity: number;
+    unitPrice: number;
+    adjustedPrice?: number | null;
+    subtotal: number;
+    productIdSnapshot?: string | null;
+    productNameSnapshot?: string | null;
+    variantName?: string | null;
+    variantSku?: string | null;
+    variantSize?: string | null;
+    variantColor?: string | null;
+  },
+  variant?: {
+    id: string;
+    sku: string;
+    size: string;
+    color: string;
+    product: { id: string; name: string };
+  },
+) {
+  return {
+    variantId: item.variantId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    adjustedPrice: item.adjustedPrice ?? null,
+    subtotal: item.subtotal,
+    productIdSnapshot: variant?.product.id ?? item.productIdSnapshot ?? null,
+    productNameSnapshot: variant?.product.name ?? item.productNameSnapshot ?? null,
+    variantName:
+      variant ? `${variant.product.name} - ${variant.size}` : item.variantName ?? null,
+    variantSku: variant?.sku ?? item.variantSku ?? null,
+    variantSize: variant?.size ?? item.variantSize ?? null,
+    variantColor: variant?.color ?? item.variantColor ?? null,
+  };
 }
 
 async function applyStockDeltaOrThrow(
@@ -239,6 +307,20 @@ export async function createOrder(data: {
 
     await applyStockDeltaOrThrow(tx, reserveDelta);
 
+    // Fetch variant details for snapshot columns (preserves history if variant is later deleted)
+    const variantIds = data.items.map((i) => i.variantId);
+    const variants = await tx.variant.findMany({
+      where: { id: { in: variantIds } },
+      select: {
+        id: true,
+        sku: true,
+        size: true,
+        color: true,
+        product: { select: { id: true, name: true } },
+      },
+    });
+    const variantMap = new Map(variants.map((v) => [v.id, v]));
+
     return tx.order.create({
       data: {
         customerName: data.customerName,
@@ -250,13 +332,23 @@ export async function createOrder(data: {
         totalAmount,
         netAmount,
         items: {
-          create: itemsWithSubtotal.map((item) => ({
-            variantId: item.variantId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            adjustedPrice: item.adjustedPrice,
-            subtotal: item.subtotal,
-          })),
+          create: itemsWithSubtotal.map((item) => {
+            const v = variantMap.get(item.variantId);
+            return {
+              variantId: item.variantId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              adjustedPrice: item.adjustedPrice,
+              subtotal: item.subtotal,
+              productIdSnapshot: v?.product.id ?? null,
+              productNameSnapshot: v?.product.name ?? null,
+              // Snapshot for historical display after variant deletion
+              variantName: v ? `${v.product.name} – ${v.size}` : null,
+              variantSku: v?.sku ?? null,
+              variantSize: v?.size ?? null,
+              variantColor: v?.color ?? null,
+            };
+          }),
         },
         // Auto-create a payment transaction if method provided.
         ...(data.paymentMethod && {
@@ -302,7 +394,10 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 
     if (!wasDeducted && shouldBeDeducted) {
       const reserveDelta = new Map<string, number>(
-        [...buildQuantityMap(order.items).entries()].map(([variantId, qty]) => [variantId, -qty]),
+        [...buildQuantityMap(order.items).entries()].map(([variantId, qty]) => [
+          variantId,
+          -qty,
+        ]),
       );
       await applyStockDeltaOrThrow(tx, reserveDelta);
     }
@@ -311,6 +406,37 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
       where: { id },
       data: { status },
     });
+  });
+
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/inventory");
+  revalidatePath("/admin");
+}
+
+// Delete an order and restore reserved stock when applicable.
+export async function deleteOrder(id: string) {
+  await requireAuth();
+
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          select: {
+            variantId: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    if (!order) throw new Error("Order not found");
+
+    if (order.status !== "CANCELLED") {
+      await applyStockDeltaOrThrow(tx, buildQuantityMap(order.items, 1));
+    }
+
+    await tx.order.delete({ where: { id } });
   });
 
   revalidatePath("/admin/orders");
@@ -330,11 +456,11 @@ export async function updateOrder(
     channelFee?: number;
     status: OrderStatus;
     paymentReference?: string;
-    items: OrderItemInput[];
+    items: UpdateOrderItemInput[];
   },
 ) {
   await requireAuth();
-  validateOrderItems(data.items);
+  validateOrderItems(data.items, true);
 
   // Calculate totals - use adjustedPrice when set, otherwise unitPrice.
   const itemsWithSubtotal = data.items.map((item) => ({
@@ -370,8 +496,9 @@ export async function updateOrder(
     if (!currentOrder) throw new Error("Order not found");
 
     const paymentTx =
-      currentOrder.transactions.find((transaction) => transaction.type === "PAYMENT") ??
-      currentOrder.transactions[0];
+      currentOrder.transactions.find(
+        (transaction) => transaction.type === "PAYMENT",
+      ) ?? currentOrder.transactions[0];
 
     if (paymentReference !== undefined && paymentReference && paymentTx) {
       await assertReferenceUniqueOrThrow(tx, paymentReference, paymentTx.id);
@@ -389,6 +516,22 @@ export async function updateOrder(
 
     await tx.orderItem.deleteMany({ where: { orderId: id } });
 
+    // Fetch variant snapshots for newly created items
+    const newVariantIds = itemsWithSubtotal
+      .map((item) => item.variantId)
+      .filter((variantId): variantId is string => Boolean(variantId));
+    const newVariants = await tx.variant.findMany({
+      where: { id: { in: newVariantIds } },
+      select: {
+        id: true,
+        sku: true,
+        size: true,
+        color: true,
+        product: { select: { id: true, name: true } },
+      },
+    });
+    const newVariantMap = new Map(newVariants.map((v) => [v.id, v]));
+
     await tx.order.update({
       where: { id },
       data: {
@@ -402,13 +545,27 @@ export async function updateOrder(
         totalAmount,
         netAmount,
         items: {
-          create: itemsWithSubtotal.map((item) => ({
-            variantId: item.variantId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            adjustedPrice: item.adjustedPrice,
-            subtotal: item.subtotal,
-          })),
+          create: itemsWithSubtotal.map((item) => {
+            const v = item.variantId
+              ? newVariantMap.get(item.variantId)
+              : undefined;
+            if (!v) {
+              return buildOrderItemSnapshot(item);
+            }
+            return {
+              variantId: item.variantId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              adjustedPrice: item.adjustedPrice,
+              subtotal: item.subtotal,
+              productIdSnapshot: v.product.id,
+              productNameSnapshot: v.product.name,
+              variantName: v ? `${v.product.name} – ${v.size}` : null,
+              variantSku: v?.sku ?? null,
+              variantSize: v?.size ?? null,
+              variantColor: v?.color ?? null,
+            };
+          }),
         },
       },
     });
