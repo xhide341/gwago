@@ -1,21 +1,19 @@
 import type { NextConfig } from "next";
 
+const remotePatterns = [
+  {
+    protocol: "https" as const,
+    hostname: "picsum.photos",
+  },
+  {
+    protocol: "https" as const,
+    hostname: "fastly.picsum.photos",
+  },
+];
+
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "picsum.photos",
-      },
-      {
-        protocol: "https",
-        hostname: "fastly.picsum.photos",
-      },
-      {
-        protocol: "https",
-        hostname: "ubarzhptndszlnuvcggr.supabase.co",
-      },
-    ],
+    remotePatterns,
   },
   async headers() {
     return [
