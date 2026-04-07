@@ -117,6 +117,24 @@
 }
 
 @layer base {
+  html,
+  body {
+    scrollbar-gutter: stable both-edges;
+  }
+
+  /* Radix Select uses react-remove-scroll, which injects right-gap compensation
+     while open. With stable gutters enabled, that compensation can cause a
+     horizontal nudge in centered admin layouts. */
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .with-scroll-bars-hidden {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }

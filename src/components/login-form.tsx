@@ -10,7 +10,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { firstErrorMessage } from "@/lib/form-errors";
 import { loginFormSchema } from "@/lib/validation/forms";
-
+import { Loader2 } from "lucide-react";
 
 // Login form with Google OAuth + email/password credentials
 export function LoginForm() {
@@ -31,14 +31,9 @@ export function LoginForm() {
       formData.set("email", value.email);
       formData.set("password", value.password);
 
-      try {
-        await signInWithCredentials(formData);
-      } catch (error) {
-        setSubmitError(
-          error instanceof Error
-            ? error.message
-            : "Unable to sign in. Check your credentials and try again.",
-        );
+      const result = await signInWithCredentials(formData);
+      if (result?.error) {
+        setSubmitError(result.error);
       }
     },
   });
@@ -49,7 +44,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="border-zinc-800 bg-zinc-950/80 backdrop-blur-sm">
+    <Card className="border-zinc-800 bg-zinc-950/80 backdrop-blur-sm py-4">
       <CardContent className="pt-6">
         {/* Google OAuth Button */}
         <Button
@@ -58,25 +53,54 @@ export function LoginForm() {
           onClick={handleGoogleSignIn}
           disabled={isGoogleLoading}
         >
-          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-            />
-            <path
-              fill="currentColor"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="currentColor"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-            />
-            <path
-              fill="currentColor"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-            />
-          </svg>
-          Continue with Google
+          {isGoogleLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <>
+              <span>Continue with</span>
+              <svg
+                className="h-4 w-4"
+                width="40"
+                height="40"
+                viewBox="0 0 40 40"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <g clipPath="url(#google-logo-clip)">
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M39.2 20.4546C39.2 19.0364 39.0727 17.6728 38.8364 16.3637H20V24.1H30.7636C30.3 26.6 28.8909 28.7182 26.7727 30.1364V35.1546H33.2364C37.0182 31.6728 39.2 26.5455 39.2 20.4546Z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M20 40C25.4 40 29.9273 38.2091 33.2364 35.1545L26.7727 30.1363C24.9818 31.3363 22.6909 32.0454 20 32.0454C14.7909 32.0454 10.3818 28.5273 8.80909 23.8H2.12727V28.9818C5.41818 35.5182 12.1818 40 20 40Z"
+                    fill="#34A853"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M8.80909 23.8C8.40909 22.6 8.18182 21.3182 8.18182 20C8.18182 18.6818 8.40909 17.4 8.80909 16.2V11.0182H2.12727C0.772727 13.7182 0 16.7727 0 20C0 23.2273 0.772727 26.2818 2.12727 28.9818L8.80909 23.8Z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M20 7.95455C22.9364 7.95455 25.5727 8.96364 27.6455 10.9455L33.3818 5.20909C29.9182 1.98182 25.3909 0 20 0C12.1818 0 5.41818 4.48182 2.12727 11.0182L8.80909 16.2C10.3818 11.4727 14.7909 7.95455 20 7.95455Z"
+                    fill="#EA4335"
+                  />
+                </g>
+                <defs>
+                  <clipPath id="google-logo-clip">
+                    <rect width="40" height="40" fill="white" />
+                  </clipPath>
+                </defs>
+              </svg>
+            </>
+          )}
         </Button>
 
         <div className="relative my-6">
@@ -101,7 +125,8 @@ export function LoginForm() {
           >
             {(field) => {
               const error =
-                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched &&
+                firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -121,7 +146,9 @@ export function LoginForm() {
                     placeholder="admin@gwago.com"
                     className="border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:ring-zinc-700"
                   />
-                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
+                  {error ? (
+                    <p className="text-xs text-red-400">{error}</p>
+                  ) : null}
                 </div>
               );
             }}
@@ -132,7 +159,8 @@ export function LoginForm() {
           >
             {(field) => {
               const error =
-                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched &&
+                firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -152,12 +180,16 @@ export function LoginForm() {
                     placeholder="********"
                     className="border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:ring-zinc-700"
                   />
-                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
+                  {error ? (
+                    <p className="text-xs text-red-400">{error}</p>
+                  ) : null}
                 </div>
               );
             }}
           </form.Field>
-          {submitError ? <p className="text-xs text-red-400">{submitError}</p> : null}
+          {submitError ? (
+            <p className="text-xs text-red-400">{submitError}</p>
+          ) : null}
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => (
               <Button
@@ -165,10 +197,36 @@ export function LoginForm() {
                 className="w-full bg-white text-black hover:bg-zinc-200"
                 disabled={isGoogleLoading || isSubmitting}
               >
-                {isSubmitting ? "Signing in..." : "Sign In"}
+                {isSubmitting ? (
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             )}
           </form.Subscribe>
+
+          {/* TEMPORARY: Guest login for demo purposes */}
+          <button
+            type="button"
+            className="w-full text-center text-sm text-zinc-400 underline underline-offset-4 transition-colors hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isGoogleLoading}
+            onClick={async () => {
+              setSubmitError(null);
+              const formData = new FormData();
+              formData.set("email", "guest@gwago.com");
+              formData.set("password", "guest");
+              const result = await signInWithCredentials(formData);
+              if (result?.error) {
+                setSubmitError(result.error);
+              }
+            }}
+          >
+            Guest Login
+          </button>
         </form>
       </CardContent>
       <CardFooter className="justify-center border-t border-zinc-800 py-4">
@@ -179,4 +237,3 @@ export function LoginForm() {
     </Card>
   );
 }
-

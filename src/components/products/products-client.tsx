@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import Image from "next/image";
 import {
@@ -9,6 +9,7 @@ import {
   deleteProduct,
   getProductDeleteImpact,
   createVariant,
+  updateVariant,
   deleteVariant,
 } from "@/actions/products";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
   Plus,
   Trash2,
   Edit,
+  Loader2,
   ChevronDown,
   ChevronRight,
   Package,
@@ -64,6 +66,7 @@ type Product = {
   isActive: boolean;
   variants: {
     id: string;
+    image: string | null;
     size: string;
     color: string;
     sku: string;
@@ -247,6 +250,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
+                                <th className="pb-2 font-medium">Image</th>
                                 <th className="pb-2 font-medium">SKU</th>
                                 <th className="pb-2 font-medium">Size</th>
                                 <th className="pb-2 font-medium">Color</th>
@@ -260,6 +264,23 @@ export function ProductsClient({ products }: { products: Product[] }) {
                             <tbody className="divide-y divide-zinc-800/50">
                               {product.variants.map((v) => (
                                 <tr key={v.id}>
+                                  <td className="py-2">
+                                    <div className="relative h-8 w-8 overflow-hidden rounded-md bg-zinc-800">
+                                      {v.image ? (
+                                        <Image
+                                          src={v.image}
+                                          alt={`${product.name} ${v.size} ${v.color}`}
+                                          fill
+                                          sizes="32px"
+                                          className="object-cover"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-zinc-600">
+                                          <Package className="h-4 w-4" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
                                   <td className="py-2 font-mono text-xs text-zinc-400">
                                     <div className="flex items-center gap-2">
                                       <span>{v.sku}</span>
@@ -288,13 +309,20 @@ export function ProductsClient({ products }: { products: Product[] }) {
                                     />
                                   </td>
                                   <td className="py-2">
-                                    <VariantDeleteDialog
-                                      variantId={v.id}
-                                      sku={v.sku}
-                                      size={v.size}
-                                      color={v.color}
-                                      linkedOrderItems={v._count.orderItems}
-                                    />
+                                    <div className="flex items-center justify-end gap-1">
+                                      <EditVariantDialog
+                                        variant={v}
+                                        productId={product.id}
+                                        productBasePrice={product.basePrice}
+                                      />
+                                      <VariantDeleteDialog
+                                        variantId={v.id}
+                                        sku={v.sku}
+                                        size={v.size}
+                                        color={v.color}
+                                        linkedOrderItems={v._count.orderItems}
+                                      />
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -325,6 +353,7 @@ function ProductDeleteDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [impact, setImpact] = useState<ProductDeleteImpact | null>(null);
+  const [preparingDialog, setPreparingDialog] = useState(false);
   const [loadingImpact, setLoadingImpact] = useState(false);
   const [impactError, setImpactError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -332,48 +361,29 @@ function ProductDeleteDialog({
   const statusCards = [
     { key: "PENDING", label: "Pending", color: "#eab308" },
     { key: "PROCESSING", label: "Processing", color: "#3b82f6" },
-    { key: "COMPLETED", label: "Completed", color: "#10b981" },
-    { key: "CANCELLED", label: "Cancelled", color: "#ef4444" },
   ] as const;
 
-  useEffect(() => {
-    if (!open) return;
+  async function prepareDialog() {
+    setPreparingDialog(true);
+    setImpact(null);
+    setImpactError(null);
+    setLoadingImpact(true);
 
-    let cancelled = false;
-
-    async function loadImpact() {
-      setImpact(null);
-      setImpactError(null);
-      setLoadingImpact(true);
-
-      try {
-        const nextImpact = await getProductDeleteImpact(productId);
-        if (!cancelled) {
-          setImpact(nextImpact);
-        }
-      } catch {
-        if (!cancelled) {
-          setImpactError("Unable to load delete impact right now.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingImpact(false);
-        }
-      }
+    try {
+      const nextImpact = await getProductDeleteImpact(productId);
+      setImpact(nextImpact);
+    } catch {
+      setImpactError("Unable to load product usage summary right now.");
+    } finally {
+      setLoadingImpact(false);
+      setPreparingDialog(false);
+      setOpen(true);
     }
+  }
 
-    void loadImpact();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, productId]);
-
-  const totalLinkedOrders = impact
+  const totalActiveOrders = impact
     ? impact.linkedOrdersByStatus.PENDING +
-      impact.linkedOrdersByStatus.PROCESSING +
-      impact.linkedOrdersByStatus.COMPLETED +
-      impact.linkedOrdersByStatus.CANCELLED
+      impact.linkedOrdersByStatus.PROCESSING
     : 0;
 
   async function handleConfirm() {
@@ -381,10 +391,14 @@ function ProductDeleteDialog({
 
     try {
       const result = await deleteProduct(productId);
-      if (result.status === "deleted") {
-        toast.success(result.message);
-      } else {
+      if (result.status === "blocked") {
+        toast.error(result.message);
+        return;
+      }
+      if (result.status === "archived") {
         toast.warning(result.message);
+      } else {
+        toast.success(result.message);
       }
       setOpen(false);
     } catch {
@@ -394,178 +408,251 @@ function ProductDeleteDialog({
     }
   }
 
-  const actionLabel =
-    impact?.recommendedAction === "ARCHIVE"
+  const recommendedAction =
+    impact?.recommendedAction ?? (hasOrderHistory ? "ARCHIVE" : undefined);
+  const isArchiveFlow = recommendedAction === "ARCHIVE";
+  const isBlockedFlow = recommendedAction === "BLOCKED";
+  const actionLabel = isBlockedFlow
+    ? "Blocked by Active Orders"
+    : isArchiveFlow
       ? "Archive Product"
       : "Delete Permanently";
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          title={
-            hasOrderHistory
-              ? "This product has order history. It will be archived."
-              : "Delete product"
-          }
-          className="h-8 w-8 text-zinc-500 hover:text-red-400"
-        >
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        title="Archive or delete product"
+        onClick={() => void prepareDialog()}
+        disabled={preparingDialog}
+        aria-label={
+          preparingDialog
+            ? "Loading product archive options"
+            : "Archive or delete product"
+        }
+        className="h-8 w-8 text-zinc-500 hover:text-red-400"
+      >
+        {preparingDialog ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
           <Trash2 className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl border-zinc-800 bg-zinc-950">
-        <DialogHeader>
-          <DialogTitle className="text-white">
-            Confirm Product Removal
-          </DialogTitle>
-        </DialogHeader>
+        )}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl border-zinc-800 bg-zinc-950">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {isBlockedFlow
+                ? "Product Has Active Orders"
+                : isArchiveFlow
+                  ? "Archive Product?"
+                  : "Confirm Product Removal?"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <p className="text-sm text-zinc-400">
-            Review impact for{" "}
-            <span className="font-medium text-white">{productName}</span>.
-          </p>
+          <div className="space-y-4">
+            {isBlockedFlow ? (
+              <p className="text-sm text-zinc-400">
+                <span className="font-medium text-white">{productName}</span> is
+                still used by active orders and cannot be archived yet.
+              </p>
+            ) : isArchiveFlow ? (
+              <div className="space-y-5 pt-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-zinc-400">
+                    You are about to archive:
+                  </p>
+                  <p className="text-sm font-medium text-white">
+                    {productName}
+                  </p>
+                </div>
 
-          {loadingImpact ? (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-6 text-sm text-zinc-400">
-              Loading impact details...
-            </div>
-          ) : null}
+                <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3">
+                  <p className="text-sm text-yellow-200">
+                    This product and all its variants will be hidden from the
+                    active catalog.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-400">
+                Review product usage for{" "}
+                <span className="font-medium text-white">{productName}</span>.
+              </p>
+            )}
 
-          {impactError ? (
-            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
-              {impactError}
-            </div>
-          ) : null}
+            {!isArchiveFlow && loadingImpact ? (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-6 text-sm text-zinc-400">
+                Loading product usage summary...
+              </div>
+            ) : null}
 
-          {impact ? (
-            <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {statusCards.map(({ key, label, color }) => {
-                  const count = impact.linkedOrdersByStatus[key];
-                  const percentValue =
-                    totalLinkedOrders > 0
-                      ? (count / totalLinkedOrders) * 100
-                      : 0;
-                  const percentLabel = `${percentValue.toFixed(1)}%`;
+            {!isArchiveFlow && impactError ? (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
+                {impactError}
+              </div>
+            ) : null}
 
-                  return (
-                    <div
-                      key={key}
-                      className="rounded-lg border border-zinc-800 bg-zinc-900 p-3"
-                    >
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-zinc-400">
-                          {label}
-                        </span>
-                        <span className="text-sm font-semibold text-white">
-                          {count}
-                        </span>
+            {!isArchiveFlow && impact ? (
+              <>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {statusCards.map(({ key, label, color }) => {
+                    const count = impact.linkedOrdersByStatus[key];
+                    const percentValue =
+                      totalActiveOrders > 0
+                        ? (count / totalActiveOrders) * 100
+                        : 0;
+                    const percentLabel = `${percentValue.toFixed(1)}%`;
+
+                    return (
+                      <div
+                        key={key}
+                        className="rounded-lg border border-zinc-800 bg-zinc-900 p-3"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-zinc-400">
+                            {label}
+                          </span>
+                          <span className="text-sm font-semibold text-white">
+                            {count}
+                          </span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: percentLabel,
+                              backgroundColor: color,
+                            }}
+                            role="progressbar"
+                            aria-label={`${label} orders`}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={Number(percentValue.toFixed(1))}
+                          />
+                        </div>
+                        <p className="mt-1 text-right text-xs text-zinc-500">
+                          {percentLabel}
+                        </p>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            width: percentLabel,
-                            backgroundColor: color,
-                          }}
-                          role="progressbar"
-                          aria-label={`${label} orders`}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={Number(percentValue.toFixed(1))}
-                        />
-                      </div>
-                      <p className="mt-1 text-right text-xs text-zinc-500">
-                        {percentLabel}
+                    );
+                  })}
+                </div>
+
+                {impact.variants.length > 0 ? (
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-400" />
+                      <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        Variants affected
                       </p>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="max-h-44 overflow-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-track]:bg-zinc-900/50">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur">
+                          <tr className="border-b border-zinc-800 text-left text-zinc-500">
+                            <th className="py-1.5 font-medium">SKU</th>
+                            <th className="py-1.5 font-medium">Option</th>
+                            <th className="py-1.5 font-medium">Stock</th>
+                            <th className="py-1.5 font-medium">Order Items</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-800/70 text-zinc-300">
+                          {impact.variants.map((variant) => (
+                            <tr key={variant.id}>
+                              <td className="py-1.5 font-mono">
+                                {variant.sku}
+                              </td>
+                              <td className="py-1.5">
+                                {variant.size} / {variant.color}
+                              </td>
+                              <td className="py-1.5">
+                                {variant.stockQuantity}
+                              </td>
+                              <td className="py-1.5">
+                                {variant.linkedOrderItems}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
 
-              {impact.variants.length > 0 ? (
-                <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <AlertTriangle className="h-3.5 w-3.5 text-yellow-400" />
-                    <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-                      Variants affected
+                {impact.recommendedAction !== "BLOCKED" ? (
+                  <div
+                    className={`rounded-lg border px-4 py-3 text-sm ${
+                      impact.recommendedAction === "ARCHIVE"
+                        ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-300"
+                        : "border-red-500/30 bg-red-500/10 text-red-300"
+                    }`}
+                  >
+                    <p>
+                      {impact.recommendedAction === "ARCHIVE"
+                        ? "This product is linked to historical orders. It will be archived instead of deleted."
+                        : "No linked orders found. It can be safely deleted."}
                     </p>
                   </div>
-                  <div className="max-h-44 overflow-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-track]:bg-zinc-900/50">
-                    <table className="w-full text-xs">
-                      <thead className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur">
-                        <tr className="border-b border-zinc-800 text-left text-zinc-500">
-                          <th className="py-1.5 font-medium">SKU</th>
-                          <th className="py-1.5 font-medium">Option</th>
-                          <th className="py-1.5 font-medium">Stock</th>
-                          <th className="py-1.5 font-medium">Order Items</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-800/70 text-zinc-300">
-                        {impact.variants.map((variant) => (
-                          <tr key={variant.id}>
-                            <td className="py-1.5 font-mono">{variant.sku}</td>
-                            <td className="py-1.5">
-                              {variant.size} / {variant.color}
-                            </td>
-                            <td className="py-1.5">{variant.stockQuantity}</td>
-                            <td className="py-1.5">
-                              {variant.linkedOrderItems}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : null}
+                ) : null}
+              </>
+            ) : null}
 
-              <div
-                className={`rounded-lg border px-4 py-3 text-sm ${
-                  impact.recommendedAction === "ARCHIVE"
-                    ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-300"
-                    : "border-red-500/30 bg-red-500/10 text-red-300"
-                }`}
-              >
-                <p>
-                  {impact.recommendedAction === "ARCHIVE"
-                    ? "This product is linked to existing orders. It will be archived instead of deleted. Archiving applies to all variants under this product and keeps historical order references intact."
-                    : "No linked orders found. Deleting this product will permanently remove all of its variants, and each variant's inventory stock record will be removed too."}
-                </p>
+            {isBlockedFlow ? (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
+                Complete or cancel the active orders first. This product should
+                stay active until those operations are finished.
               </div>
-            </>
-          ) : null}
+            ) : null}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-              className="text-zinc-300 hover:text-white"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirm}
-              disabled={
-                loadingImpact || submitting || !impact || Boolean(impactError)
-              }
-              className={
-                impact?.recommendedAction === "ARCHIVE"
-                  ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                  : "bg-red-600 text-white hover:bg-red-500"
-              }
-            >
-              {submitting ? "Working..." : actionLabel}
-            </Button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+                className="border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800 hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirm}
+                disabled={
+                  isArchiveFlow
+                    ? submitting
+                    : loadingImpact ||
+                      submitting ||
+                      !impact ||
+                      Boolean(impactError) ||
+                      isBlockedFlow
+                }
+                className={
+                  isBlockedFlow
+                    ? "bg-zinc-700 text-zinc-300"
+                    : isArchiveFlow
+                      ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                      : "bg-red-600 text-white hover:bg-red-500"
+                }
+                aria-label={
+                  submitting
+                    ? isArchiveFlow
+                      ? "Archiving product"
+                      : "Deleting product"
+                    : actionLabel
+                }
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  actionLabel
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -584,21 +671,23 @@ function VariantDeleteDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const isBlocked = linkedOrderItems > 0;
+  const hasOrderHistory = linkedOrderItems > 0;
 
   async function handleDelete() {
     setSubmitting(true);
 
     try {
       const result = await deleteVariant(variantId);
-      if (result.status === "deleted") {
-        toast.success(result.message);
-      } else {
+      if (result.status === "blocked") {
+        toast.error(result.message);
+        return;
+      }
+      if (result.status === "archived") {
         toast.warning(result.message);
+      } else {
+        toast.success(result.message);
       }
-      if (result.status === "deleted") {
-        setOpen(false);
-      }
+      setOpen(false);
     } catch {
       toast.error("Unable to delete this variant right now. Please try again.");
     } finally {
@@ -612,12 +701,7 @@ function VariantDeleteDialog({
         <Button
           variant="ghost"
           size="icon"
-          disabled={isBlocked}
-          title={
-            isBlocked
-              ? "Cannot delete: this variant is referenced by orders."
-              : "Delete variant"
-          }
+          title={hasOrderHistory ? "Archive variant" : "Delete variant"}
           className="h-7 w-7 text-zinc-600 hover:text-red-400"
         >
           <Trash2 className="h-3 w-3" />
@@ -625,7 +709,9 @@ function VariantDeleteDialog({
       </DialogTrigger>
       <DialogContent className="max-w-md border-zinc-800 bg-zinc-950">
         <DialogHeader>
-          <DialogTitle className="text-white">Delete Variant</DialogTitle>
+          <DialogTitle className="text-white">
+            {hasOrderHistory ? "Archive Variant" : "Delete Variant"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3 text-sm">
@@ -639,8 +725,9 @@ function VariantDeleteDialog({
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
             <div className="flex items-start gap-2">
               <p>
-                This permanently removes the variant and also removes its
-                inventory stock record.
+                {hasOrderHistory
+                  ? "This variant has order history. Archiving removes it from active catalog flows while preserving historical order references. If any active orders still reference it, the action will be blocked."
+                  : "This permanently removes the variant and also removes its inventory stock record."}
               </p>
             </div>
           </div>
@@ -651,7 +738,7 @@ function VariantDeleteDialog({
             type="button"
             variant="ghost"
             onClick={() => setOpen(false)}
-            className="text-zinc-300 hover:text-white"
+            className="border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800 hover:text-white"
           >
             Cancel
           </Button>
@@ -659,9 +746,28 @@ function VariantDeleteDialog({
             type="button"
             onClick={handleDelete}
             disabled={submitting}
-            className="bg-red-600 text-white hover:bg-red-500"
+            aria-label={
+              submitting
+                ? hasOrderHistory
+                  ? "Archiving variant"
+                  : "Deleting variant"
+                : hasOrderHistory
+                  ? "Archive Variant"
+                  : "Delete Variant"
+            }
+            className={
+              hasOrderHistory
+                ? "bg-yellow-500 text-black enabled:hover:bg-yellow-400!"
+                : "bg-red-600 text-white hover:bg-red-500"
+            }
           >
-            {submitting ? "Deleting..." : "Delete Variant"}
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : hasOrderHistory ? (
+              "Archive Variant"
+            ) : (
+              "Delete Variant"
+            )}
           </Button>
         </div>
       </DialogContent>
@@ -741,6 +847,7 @@ function AddProductDialog() {
 
       try {
         await createProduct(formData);
+        toast.success("Product created successfully.");
         setOpen(false);
       } catch (error) {
         setSubmitError(
@@ -1003,9 +1110,16 @@ function AddProductDialog() {
               <Button
                 type="submit"
                 disabled={isSubmitting || !name.trim() || !basePrice.trim()}
+                aria-label={
+                  isSubmitting ? "Creating product" : "Create Product"
+                }
                 className="w-full bg-white text-black hover:bg-zinc-200"
               >
-                {isSubmitting ? "Creating..." : "Create Product"}
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Create Product"
+                )}
               </Button>
             )}
           </form.Subscribe>
@@ -1059,6 +1173,7 @@ function EditProductDialog({ product }: { product: Product }) {
 
       try {
         await updateProduct(product.id, formData);
+        toast.info("Product updated successfully.");
         setOpen(false);
       } catch (error) {
         setSubmitError(
@@ -1310,9 +1425,14 @@ function EditProductDialog({ product }: { product: Product }) {
               <Button
                 type="submit"
                 disabled={isSubmitting || !name.trim() || !basePrice.trim()}
+                aria-label={isSubmitting ? "Saving product" : "Save Changes"}
                 className="w-full bg-white text-black hover:bg-zinc-200"
               >
-                {isSubmitting ? "Saving..." : "Save Changes"}
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             )}
           </form.Subscribe>
@@ -1361,6 +1481,7 @@ function AddVariantDialog({
 
       try {
         await createVariant(formData);
+        toast.success("Variant added successfully.");
         setOpen(false);
       } catch (error) {
         setSubmitError(
@@ -1599,9 +1720,295 @@ function AddVariantDialog({
                 disabled={
                   isSubmitting || !size.trim() || !color.trim() || !sku.trim()
                 }
+                aria-label={isSubmitting ? "Adding variant" : "Add Variant"}
                 className="w-full bg-white text-black hover:bg-zinc-200"
               >
-                {isSubmitting ? "Adding..." : "Add Variant"}
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Add Variant"
+                )}
+              </Button>
+            )}
+          </form.Subscribe>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditVariantDialog({
+  variant,
+  productId,
+  productBasePrice,
+}: {
+  variant: Product["variants"][number];
+  productId: string;
+  productBasePrice: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const getInitialValues = () => ({
+    image: variant.image,
+    size: variant.size,
+    color: variant.color,
+    sku: variant.sku,
+    variantPrice: (productBasePrice + variant.priceAdjustment).toFixed(2),
+  });
+
+  const form = useForm({
+    defaultValues: getInitialValues(),
+    validators: {
+      onSubmit: addVariantFormSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+
+      const formData = new FormData();
+      formData.set("productId", productId);
+      formData.set("size", value.size.trim());
+      formData.set("color", value.color.trim());
+      formData.set("sku", value.sku.trim());
+      formData.set("variantPrice", value.variantPrice.trim());
+      formData.set("image", value.image ?? "");
+
+      try {
+        await updateVariant(variant.id, formData);
+        toast.info("Variant updated successfully.");
+        setOpen(false);
+      } catch (error) {
+        setSubmitError(
+          error instanceof Error
+            ? error.message
+            : "Failed to update variant. Please try again.",
+        );
+      }
+    },
+  });
+
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      form.reset(getInitialValues());
+      setSubmitError(null);
+    }
+    setOpen(next);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-zinc-600 hover:text-white"
+          title="Edit variant"
+        >
+          <Edit className="h-3 w-3" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md border-zinc-800 bg-zinc-950">
+        <DialogHeader>
+          <DialogTitle className="text-white">Edit Variant</DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void form.handleSubmit();
+          }}
+          className="space-y-4"
+        >
+          <p className="text-xs text-zinc-500">Fields marked * are required.</p>
+
+          <div className="space-y-2">
+            <Label className="text-zinc-400">Variant Image</Label>
+            <form.Field name="image">
+              {(field) => (
+                <ImageUpload
+                  name={field.name}
+                  value={field.state.value}
+                  onChange={(next) => {
+                    setSubmitError(null);
+                    field.handleChange(next);
+                  }}
+                  className="mx-auto max-w-48"
+                />
+              )}
+            </form.Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <form.Field
+              name="size"
+              validators={{ onChange: addVariantFormSchema.shape.size }}
+            >
+              {(field) => {
+                const error =
+                  field.state.meta.isTouched &&
+                  firstErrorMessage(field.state.meta.errors);
+
+                return (
+                  <div className="space-y-2">
+                    <Label className="text-zinc-400">
+                      Size <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => {
+                        setSubmitError(null);
+                        field.handleChange(e.target.value);
+                      }}
+                      placeholder="e.g. M, L, XL"
+                      className="border-zinc-800 bg-zinc-900 text-white"
+                    />
+                    {error ? (
+                      <p className="text-xs text-red-400">{error}</p>
+                    ) : null}
+                  </div>
+                );
+              }}
+            </form.Field>
+            <form.Field
+              name="color"
+              validators={{ onChange: addVariantFormSchema.shape.color }}
+            >
+              {(field) => {
+                const error =
+                  field.state.meta.isTouched &&
+                  firstErrorMessage(field.state.meta.errors);
+
+                return (
+                  <div className="space-y-2">
+                    <Label className="text-zinc-400">
+                      Color <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => {
+                        setSubmitError(null);
+                        field.handleChange(e.target.value);
+                      }}
+                      placeholder="e.g. Black, White"
+                      className="border-zinc-800 bg-zinc-900 text-white"
+                    />
+                    {error ? (
+                      <p className="text-xs text-red-400">{error}</p>
+                    ) : null}
+                  </div>
+                );
+              }}
+            </form.Field>
+          </div>
+
+          <form.Field
+            name="sku"
+            validators={{ onChange: addVariantFormSchema.shape.sku }}
+          >
+            {(field) => {
+              const error =
+                field.state.meta.isTouched &&
+                firstErrorMessage(field.state.meta.errors);
+
+              return (
+                <div className="space-y-2">
+                  <Label className="text-zinc-400">
+                    SKU <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => {
+                      setSubmitError(null);
+                      field.handleChange(e.target.value);
+                    }}
+                    placeholder="e.g. TS-BLK-M"
+                    className="border-zinc-800 bg-zinc-900 font-mono text-white"
+                  />
+                  {error ? (
+                    <p className="text-xs text-red-400">{error}</p>
+                  ) : null}
+                </div>
+              );
+            }}
+          </form.Field>
+
+          <form.Field
+            name="variantPrice"
+            validators={{
+              onChange: addVariantFormSchema.shape.variantPrice,
+            }}
+          >
+            {(field) => {
+              const error =
+                field.state.meta.isTouched &&
+                firstErrorMessage(field.state.meta.errors);
+
+              return (
+                <div className="space-y-2">
+                  <Label className="text-zinc-400">
+                    Variant Price (Optional)
+                  </Label>
+                  <Input
+                    name={field.name}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => {
+                      setSubmitError(null);
+                      field.handleChange(e.target.value);
+                    }}
+                    placeholder={productBasePrice.toFixed(2)}
+                    className="border-zinc-800 bg-zinc-900 text-white"
+                  />
+                  <p className="text-xs text-zinc-600">
+                    Leave blank to use the base price.
+                  </p>
+                  {error ? (
+                    <p className="text-xs text-red-400">{error}</p>
+                  ) : null}
+                </div>
+              );
+            }}
+          </form.Field>
+
+          {submitError ? (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {submitError}
+            </p>
+          ) : null}
+
+          <form.Subscribe
+            selector={(state) =>
+              [
+                state.isSubmitting,
+                state.values.size,
+                state.values.color,
+                state.values.sku,
+              ] as const
+            }
+          >
+            {([isSubmitting, size, color, sku]) => (
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting || !size.trim() || !color.trim() || !sku.trim()
+                }
+                aria-label={isSubmitting ? "Saving variant" : "Save Variant"}
+                className="w-full bg-white text-black hover:bg-zinc-200"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save Variant"
+                )}
               </Button>
             )}
           </form.Subscribe>

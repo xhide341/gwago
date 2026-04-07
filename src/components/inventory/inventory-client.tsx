@@ -29,12 +29,14 @@ import {
   AlertTriangle,
   LayoutGrid,
   List,
+  Loader2,
   Package,
   Pencil,
   Search,
   Trash2,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { toast } from "sonner";
 
 type InventoryItem = {
   id: string;
@@ -56,6 +58,18 @@ type InventoryItem = {
     };
   };
 };
+
+const INVENTORY_SIZE_OPTIONS = [
+  "XS",
+  "S",
+  "M",
+  "L",
+  "XL",
+  "2XL",
+  "3XL",
+  "4XL",
+  "5XL",
+] as const;
 
 export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
   const [search, setSearch] = useState("");
@@ -98,16 +112,40 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
       {(lowStockCount > 0 || outOfStockCount > 0) && (
         <div className="flex gap-3">
           {outOfStockCount > 0 && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm text-red-400">
+            <button
+              type="button"
+              onClick={() =>
+                setFilter((current) => (current === "out" ? "all" : "out"))
+              }
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-red-400 transition-colors ${
+                filter === "out"
+                  ? "border-red-500/40 bg-red-500/15"
+                  : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10"
+              }`}
+              aria-pressed={filter === "out"}
+              title="Filter to out-of-stock items"
+            >
               <AlertTriangle className="h-4 w-4" />
               {outOfStockCount} out of stock
-            </div>
+            </button>
           )}
           {lowStockCount > 0 && (
-            <div className="flex items-center gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-2 text-sm text-yellow-400">
+            <button
+              type="button"
+              onClick={() =>
+                setFilter((current) => (current === "low" ? "all" : "low"))
+              }
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-yellow-400 transition-colors ${
+                filter === "low"
+                  ? "border-yellow-500/40 bg-yellow-500/15"
+                  : "border-yellow-500/20 bg-yellow-500/5 hover:bg-yellow-500/10"
+              }`}
+              aria-pressed={filter === "low"}
+              title="Filter to low-stock items"
+            >
               <AlertTriangle className="h-4 w-4" />
               {lowStockCount} low on stock
-            </div>
+            </button>
           )}
         </div>
       )}
@@ -461,6 +499,13 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
   const [color, setColor] = useState(item.variant.color);
   const [sku, setSku] = useState(item.variant.sku);
   const [quantity, setQuantity] = useState(item.quantity);
+  const sizeOptions =
+    size &&
+    !INVENTORY_SIZE_OPTIONS.includes(
+      size as (typeof INVENTORY_SIZE_OPTIONS)[number],
+    )
+      ? [size, ...INVENTORY_SIZE_OPTIONS]
+      : [...INVENTORY_SIZE_OPTIONS];
 
   // Reset form when dialog opens
   function handleOpenChange(next: boolean) {
@@ -523,11 +568,18 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label className="text-zinc-400">Size</Label>
-              <Input
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-                className="border-zinc-800 bg-zinc-900 text-white"
-              />
+              <Select value={size} onValueChange={setSize}>
+                <SelectTrigger className="w-full border-zinc-800 bg-zinc-900 text-white">
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent className="border-zinc-800 bg-zinc-950">
+                  {sizeOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-zinc-400">Color</Label>
@@ -570,7 +622,11 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
             disabled={saving}
             className="w-full bg-white text-black hover:bg-zinc-200"
           >
-            {saving ? "Saving…" : "Save Changes"}
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Save Changes"
+            )}
           </Button>
         </div>
       </DialogContent>
@@ -586,10 +642,27 @@ function DeleteVariantButton({ item }: { item: InventoryItem }) {
   async function handleDelete() {
     setDeleting(true);
     try {
-      await deleteVariantFromInventory(item.variantId);
-      setOpen(false);
+      const result = await deleteVariantFromInventory(item.variantId);
+
+      if (result.status === "blocked") {
+        toast.error(result.message);
+        return;
+      }
+
+      if (result.status === "archived") {
+        toast.warning(result.message);
+        setOpen(false);
+        return;
+      }
+
+      if (result.status === "deleted") {
+        toast.success(result.message);
+        setOpen(false);
+        return;
+      }
     } catch {
-      alert("Cannot delete — this variant is used in existing orders.");
+      toast.error("Unable to delete this variant right now. Please try again.");
+    } finally {
       setDeleting(false);
     }
   }
@@ -607,34 +680,45 @@ function DeleteVariantButton({ item }: { item: InventoryItem }) {
       </DialogTrigger>
       <DialogContent className="max-w-sm border-zinc-800 bg-zinc-950">
         <DialogHeader>
-          <DialogTitle className="text-white">Delete Variant</DialogTitle>
+          <DialogTitle className="text-white">Archive Variant?</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-zinc-400">
-          Are you sure you want to delete{" "}
-          <span className="font-medium text-white">
-            {item.variant.product.name} — {item.variant.size} /{" "}
-            {item.variant.color}
-          </span>
-          ? This will also remove its inventory stock record. This action cannot
-          be undone.
-        </p>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setOpen(false)}
-            className="text-zinc-400 hover:text-white"
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="bg-red-600 text-white hover:bg-red-500"
-          >
-            {deleting ? "Deleting…" : "Delete"}
-          </Button>
+        <div className="space-y-5 pt-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-zinc-400">You are about to archive:</p>
+            <p className="text-sm font-medium text-white">
+              {item.variant.product.name} — {item.variant.size} /{" "}
+              {item.variant.color}
+            </p>
+          </div>
+          <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3">
+            <p className="text-sm text-yellow-200">
+              Archiving removes this variant from the active catalog and
+              inventory. If there are still active orders linked to it, the
+              action will be blocked.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(false)}
+              className="border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-yellow-500 text-black hover:bg-yellow-400 enabled:hover:bg-yellow-400!"
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Archive Variant"
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

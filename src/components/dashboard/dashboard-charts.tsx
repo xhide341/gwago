@@ -9,7 +9,7 @@ import {
   Line,
   PieChart,
   Pie,
-  Cell,
+  Sector,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -98,7 +98,7 @@ function CustomTooltip({ active, payload, label }: any) {
         <p key={i} className="text-sm" style={{ color: entry.color }}>
           {entry.name}:{" "}
           {typeof entry.value === "number" &&
-          entry.name.toLowerCase().includes("revenue")
+            entry.name.toLowerCase().includes("revenue")
             ? `₱${entry.value.toLocaleString("en-PH", { minimumFractionDigits: 0 })}`
             : entry.value.toLocaleString()}
         </p>
@@ -110,11 +110,38 @@ function CustomTooltip({ active, payload, label }: any) {
 function PieTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const data = payload[0];
+
   return (
     <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
       <p className="text-sm text-white">{data.name}</p>
       <p className="text-xs text-zinc-400">{data.value} orders</p>
     </div>
+  );
+}
+
+function OrderStatusPieShape(props: any) {
+  const { payload, fill, ...sectorProps } = props;
+  return (
+    <Sector
+      {...sectorProps}
+      fill={fill ?? payload?.fill ?? "#6b7280"}
+      stroke="none"
+    />
+  );
+}
+
+function CategoryRevenueBarShape(props: any) {
+  const { x = 0, y = 0, width = 0, height = 0, payload } = props;
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill={payload?.fill || "#3b82f6"}
+      rx={4}
+      ry={4}
+    />
   );
 }
 
@@ -158,6 +185,17 @@ export function DashboardCharts({ initialData }: Props) {
     orderStatusDist,
     paymentMethodDist,
   } = data;
+
+  const orderStatusData = orderStatusDist.map((entry) => ({
+    ...entry,
+    fill: STATUS_COLORS[entry.status] || "#6b7280",
+  }));
+
+  const categoryChartData = categoryBreakdown.map((c, i) => ({
+    ...c,
+    label: c.category,
+    fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+  }));
 
   const rangeLabel =
     range === "custom" && customRange?.from && customRange?.to
@@ -241,8 +279,13 @@ export function DashboardCharts({ initialData }: Props) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-75 min-h-75">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <div className="h-75 min-h-75 min-w-0">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={280}
+                minHeight={300}
+              >
                 <BarChart
                   accessibilityLayer={false}
                   data={dailyRevenue}
@@ -269,7 +312,10 @@ export function DashboardCharts({ initialData }: Props) {
                     tickLine={{ stroke: "#3f3f46" }}
                     axisLine={{ stroke: "#3f3f46" }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip
+                    cursor={{ fill: "transparent" }}
+                    content={<CustomTooltip />}
+                  />
                   <Legend wrapperStyle={{ fontSize: 12, color: "#a1a1aa" }} />
                   <Bar
                     yAxisId="revenue"
@@ -298,11 +344,16 @@ export function DashboardCharts({ initialData }: Props) {
             <CardTitle className="text-base text-white">Order Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-62.5 min-h-62.5">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <div className="h-62.5 min-h-62.5 min-w-0">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={280}
+                minHeight={250}
+              >
                 <PieChart accessibilityLayer={false}>
                   <Pie
-                    data={orderStatusDist}
+                    data={orderStatusData}
                     dataKey="count"
                     nameKey="status"
                     cx="50%"
@@ -311,15 +362,9 @@ export function DashboardCharts({ initialData }: Props) {
                     outerRadius={90}
                     paddingAngle={3}
                     stroke="none"
+                    shape={<OrderStatusPieShape />}
                     label={({ name, value }: any) => `${name} (${value})`}
-                  >
-                    {orderStatusDist.map((entry) => (
-                      <Cell
-                        key={entry.status}
-                        fill={STATUS_COLORS[entry.status] || "#6b7280"}
-                      />
-                    ))}
-                  </Pie>
+                  />
                   <Tooltip content={<PieTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
@@ -335,14 +380,16 @@ export function DashboardCharts({ initialData }: Props) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-62.5 min-h-62.5">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <div className="h-62.5 min-h-62.5 min-w-0">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={280}
+                minHeight={250}
+              >
                 <BarChart
                   accessibilityLayer={false}
-                  data={categoryBreakdown.map((c) => ({
-                    ...c,
-                    label: c.category,
-                  }))}
+                  data={categoryChartData}
                   layout="vertical"
                   margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
                 >
@@ -367,6 +414,7 @@ export function DashboardCharts({ initialData }: Props) {
                     axisLine={false}
                   />
                   <Tooltip
+                    cursor={{ fill: "transparent" }}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
                       const d = payload[0].payload;
@@ -381,14 +429,12 @@ export function DashboardCharts({ initialData }: Props) {
                       );
                     }}
                   />
-                  <Bar dataKey="revenue" name="Revenue" radius={[0, 4, 4, 0]}>
-                    {categoryBreakdown.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
+                  <Bar
+                    dataKey="revenue"
+                    name="Revenue"
+                    radius={[0, 4, 4, 0]}
+                    shape={<CategoryRevenueBarShape />}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>

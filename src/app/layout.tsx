@@ -11,6 +11,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Gwago Admin",
   description: "Private admin portal.",
+  icons: {
+    icon: "/gwago.svg",
+    shortcut: "/gwago.svg",
+    apple: "/gwago.svg",
+  },
   robots: {
     index: false,
     follow: false,

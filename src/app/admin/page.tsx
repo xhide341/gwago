@@ -47,7 +47,7 @@ export default async function DashboardPage() {
       title: "Low Stock Alerts",
       value: lowStockCount,
       icon: AlertTriangle,
-      description: "Below reorder level",
+      description: "are low on stock",
       alert: lowStockCount > 0,
     },
     {

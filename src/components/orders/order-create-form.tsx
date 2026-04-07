@@ -762,7 +762,7 @@ export function OrderCreateForm({ products }: { products: Product[] }) {
 
             <Separator className="bg-zinc-800" />
 
-            <div className="flex justify-between text-base font-semibold text-white">
+            <div className="flex justify-between text-sm font-semibold text-white">
               <span>Net Total</span>
               <span>
                 &#8369;
@@ -773,7 +773,7 @@ export function OrderCreateForm({ products }: { products: Product[] }) {
             </div>
 
             {calculations.channelFee > 0 && (
-              <p className="rounded-md bg-zinc-800/50 p-2 text-xs text-zinc-500">
+              <p className="rounded-sm bg-zinc-800/50 py-2 px-3 text-xs text-zinc-500">
                 You receive{" "}
                 <span className="font-medium text-emerald-400">
                   &#8369;
@@ -796,12 +796,10 @@ export function OrderCreateForm({ products }: { products: Product[] }) {
           <Button
             onClick={handleSubmit}
             disabled={isPending || items.length === 0 || !customerName.trim()}
-            className="flex-1 bg-white text-black hover:bg-zinc-200"
+            className="flex-1 bg-white text-black hover:bg-zinc-200 has-[>svg]:px-4"
           >
             {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>Create Order</>
             )}

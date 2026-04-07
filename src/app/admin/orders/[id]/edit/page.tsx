@@ -1,5 +1,5 @@
 import { getOrderById } from "@/actions/orders";
-import { getProducts } from "@/actions/products";
+import { getOrderableProducts } from "@/actions/products";
 import { OrderEditForm } from "@/components/orders/order-edit-form";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -13,7 +13,7 @@ export default async function EditOrderPage({
   const { id } = await params;
   const [order, products] = await Promise.all([
     getOrderById(id),
-    getProducts(),
+    getOrderableProducts(),
   ]);
 
   if (!order) {
@@ -32,7 +32,9 @@ export default async function EditOrderPage({
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-white">Edit Order</h1>
-          <p className="font-mono text-sm text-zinc-500">Order ID: {order.id}</p>
+          <p className="font-mono text-sm text-zinc-500">
+            Order ID: {order.id}
+          </p>
         </div>
       </div>
 

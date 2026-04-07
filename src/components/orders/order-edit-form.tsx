@@ -7,6 +7,7 @@ import {
   generateUniquePaymentReference,
   updateOrder,
   updateTransactionMethod,
+  deleteOrder,
 } from "@/actions/orders";
 import { printReceiptBrowser } from "@/lib/receipt-print";
 import { Button } from "@/components/ui/button";
@@ -14,13 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
@@ -33,7 +27,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  Save,
   Copy,
   Printer,
   Trash2,
@@ -41,7 +34,6 @@ import {
   Plus,
   Loader2,
   AlertTriangle,
-  X,
   Search,
   Package,
 } from "lucide-react";
@@ -60,17 +52,24 @@ type Order = {
   createdAt: string;
   items: {
     id: string;
+    variantId: string | null;
+    productIdSnapshot: string | null;
+    productNameSnapshot: string | null;
     quantity: number;
     unitPrice: number;
     adjustedPrice: number | null;
     subtotal: number;
+    variantName: string | null;
+    variantSku: string | null;
+    variantSize: string | null;
+    variantColor: string | null;
     variant: {
       id: string;
       size: string;
       color: string;
       sku: string;
       product: { name: string; image: string | null };
-    };
+    } | null;
   }[];
   transactions: {
     id: string;
@@ -138,10 +137,15 @@ export function OrderEditForm({
     order.transactions[0]?.method ?? "CASH",
   );
   const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
+  const [isDeleteOrderDialogOpen, setIsDeleteOrderDialogOpen] = useState(false);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [items, setItems] = useState<
     {
       id: string;
-      variantId: string;
+      variantId: string | null;
+      productIdSnapshot: string | null;
+      productNameSnapshot: string | null;
       productName: string;
       productImage: string | null;
       size: string;
@@ -152,23 +156,31 @@ export function OrderEditForm({
       adjustedPrice: number | null;
       adjustedPriceInput?: string;
       stockAvailable: number;
+      isVariantMissing: boolean;
     }[]
   >(
     order.items.map((item) => ({
       id: item.id,
-      variantId: item.variant.id,
-      productName: item.variant.product.name,
-      productImage: item.variant.product.image,
-      size: item.variant.size,
-      color: item.variant.color,
-      sku: item.variant.sku,
+      variantId: item.variant?.id ?? item.variantId,
+      productIdSnapshot: item.productIdSnapshot,
+      productNameSnapshot: item.productNameSnapshot,
+      productName:
+        item.variant?.product.name ??
+        item.productNameSnapshot ??
+        "Deleted product",
+      productImage: item.variant?.product.image ?? null,
+      size: item.variant?.size ?? item.variantSize ?? "Unknown size",
+      color: item.variant?.color ?? item.variantColor ?? "Unknown color",
+      sku: item.variant?.sku ?? item.variantSku ?? "Deleted variant",
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       adjustedPrice: item.adjustedPrice as number | null,
-      // If the order is not cancelled, include its own reserved quantity.
+      isVariantMissing: !item.variant,
       stockAvailable:
-        (stockByVariant.get(item.variant.id) ?? 0) +
-        (order.status === "CANCELLED" ? 0 : item.quantity),
+        item.variant
+          ? (stockByVariant.get(item.variant.id) ?? 0) +
+            (order.status === "CANCELLED" ? 0 : item.quantity)
+          : item.quantity,
     })),
   );
 
@@ -226,12 +238,7 @@ export function OrderEditForm({
     return { subtotal, channelFee: fee, netAmount };
   }, [items, channelFee]);
 
-  const itemAdjustment = useMemo(() => {
-    return items.reduce((sum, item) => {
-      const adjusted = item.adjustedPrice ?? item.unitPrice;
-      return sum + (adjusted - item.unitPrice) * item.quantity;
-    }, 0);
-  }, [items]);
+  const hasMissingVariants = items.some((item) => item.isVariantMissing);
 
   // Item handlers
   function addVariant(variant: (typeof allVariants)[number]) {
@@ -240,8 +247,11 @@ export function OrderEditForm({
       {
         ...variant,
         id: "", // new item, no id yet
+        productIdSnapshot: null,
+        productNameSnapshot: variant.productName,
         quantity: 1,
         adjustedPrice: null,
+        isVariantMissing: false,
       },
     ]);
     setVariantSearch("");
@@ -253,14 +263,6 @@ export function OrderEditForm({
         i === index
           ? { ...item, quantity: Math.max(1, item.quantity + delta) }
           : item,
-      ),
-    );
-  }
-
-  function updateItemPrice(index: number, price: number) {
-    setItems((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, unitPrice: price } : item,
       ),
     );
   }
@@ -312,9 +314,9 @@ export function OrderEditForm({
     removeItem(deleteCandidateIndex);
     setDeleteCandidateIndex(null);
     if (candidate) {
-      toast.success(`Removed ${candidate.productName} from this order.`);
+      toast.info(`Removed ${candidate.productName} from this order.`);
     } else {
-      toast.success("Item removed from this order.");
+      toast.info("Item removed from this order.");
     }
   }
 
@@ -361,6 +363,12 @@ export function OrderEditForm({
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             adjustedPrice: item.adjustedPrice,
+            productIdSnapshot: item.productIdSnapshot,
+            productNameSnapshot: item.productNameSnapshot,
+            variantName: `${item.productName} - ${item.size}`,
+            variantSku: item.sku,
+            variantSize: item.size,
+            variantColor: item.color,
           })),
         });
         router.push("/admin/orders");
@@ -417,10 +425,32 @@ export function OrderEditForm({
   async function handleCopyOrderId() {
     try {
       await navigator.clipboard.writeText(order.id);
-      toast.success("Order ID copied.");
+      toast.info("Order ID copied.");
     } catch {
       toast.error("Unable to copy Order ID.");
     }
+  }
+
+  async function handleDeleteOrder() {
+    setIsDeletingOrder(true);
+    try {
+      await deleteOrder(order.id);
+      toast.success("Order deleted successfully.");
+      setIsDeleteOrderDialogOpen(false);
+      router.push("/admin/orders");
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Unable to delete this order.",
+      );
+    } finally {
+      setIsDeletingOrder(false);
+    }
+  }
+
+  function handleCancel() {
+    setIsCancelling(true);
+    router.push("/admin/orders");
   }
 
   return (
@@ -531,7 +561,7 @@ export function OrderEditForm({
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-medium text-white">
-                              â‚±{v.unitPrice.toFixed(2)}
+                              ₱ {v.unitPrice.toFixed(2)}
                             </p>
                             <p
                               className={`text-xs ${v.stockAvailable > 0 ? "text-emerald-400" : "text-red-400"}`}
@@ -557,6 +587,16 @@ export function OrderEditForm({
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-4">
+            {hasMissingVariants ? (
+              <div className="flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-200">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  This order includes catalog items that were deleted or retired.
+                  They remain in the order history, but their line items are now
+                  read-only.
+                </p>
+              </div>
+            ) : null}
             {items.length === 0 ? (
               <div className="flex items-center gap-2 rounded-lg border border-dashed border-red-500/30 bg-red-500/5 p-6 text-sm text-red-400">
                 <AlertTriangle className="h-4 w-4" />
@@ -587,9 +627,19 @@ export function OrderEditForm({
                           )}
                         </div>
                         <div className="min-h-10">
-                          <p className="font-medium text-white">
-                            {item.productName}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-white">
+                              {item.productName}
+                            </p>
+                            {item.isVariantMissing ? (
+                              <Badge
+                                variant="outline"
+                                className="border-yellow-500/30 text-yellow-300"
+                              >
+                                Catalog removed
+                              </Badge>
+                            ) : null}
+                          </div>
                           <p className="mt-0.5 text-sm text-zinc-500">
                             {item.size} / {item.color}
                             <span className="ml-2 font-mono text-xs text-zinc-600">
@@ -602,6 +652,7 @@ export function OrderEditForm({
                         variant="ghost"
                         size="icon"
                         onClick={() => requestRemoveItem(index)}
+                        disabled={item.isVariantMissing}
                         className="h-8 w-8 text-zinc-600 hover:text-red-400"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -616,6 +667,7 @@ export function OrderEditForm({
                           variant="outline"
                           size="icon"
                           onClick={() => updateItemQty(index, -1)}
+                          disabled={item.isVariantMissing}
                           className="h-8 w-8 border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-white"
                         >
                           <Minus className="h-3 w-3" />
@@ -627,6 +679,7 @@ export function OrderEditForm({
                           variant="outline"
                           size="icon"
                           onClick={() => updateItemQty(index, 1)}
+                          disabled={item.isVariantMissing}
                           className="h-8 w-8 border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-white"
                         >
                           <Plus className="h-3 w-3" />
@@ -655,6 +708,7 @@ export function OrderEditForm({
                           type="number"
                           step="0.01"
                           min="0"
+                          disabled={item.isVariantMissing}
                           value={
                             item.adjustedPriceInput ??
                             (item.adjustedPrice !== null
@@ -1075,7 +1129,7 @@ export function OrderEditForm({
 
               <Separator className="my-3 bg-zinc-800" />
 
-              <div className="flex justify-between text-base font-semibold text-white">
+              <div className="flex justify-between text-sm font-semibold text-white">
                 <span>Net Total</span>
                 <span>
                   ₱{" "}
@@ -1119,16 +1173,16 @@ export function OrderEditForm({
         </Card>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-3">
           <Button
             onClick={handleSave}
-            disabled={isPending || items.length === 0}
-            className="flex-1 bg-white text-black hover:bg-zinc-200"
+            disabled={
+              isPending || isCancelling || isDeletingOrder || items.length === 0
+            }
+            className="flex-1 bg-white text-black hover:bg-zinc-200 has-[>svg]:px-4"
           >
             {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>Save Changes</>
             )}
@@ -1136,12 +1190,72 @@ export function OrderEditForm({
 
           <Button
             variant="outline"
-            onClick={() => router.push("/admin/orders")}
+            onClick={handleCancel}
+            disabled={isCancelling || isDeletingOrder}
             className="flex-1 border-zinc-700 text-zinc-400 hover:text-white"
           >
-            Cancel
+            {isCancelling ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Cancel"
+            )}
           </Button>
         </div>
+
+        <Dialog
+          open={isDeleteOrderDialogOpen}
+          onOpenChange={setIsDeleteOrderDialogOpen}
+        >
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              className="w-full bg-red-600 text-white hover:bg-red-500"
+              disabled={isPending || isDeletingOrder || isCancelling}
+            >
+              {isDeletingOrder ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Delete this order"
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md border-zinc-800 bg-zinc-950">
+            <DialogHeader>
+              <DialogTitle className="text-white">
+                Delete this order?
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-zinc-400">
+              This action cannot be undone. The order and its transactions will
+              be permanently deleted.
+            </p>
+            <div className="mt-2 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteOrderDialogOpen(false)}
+                className="border-zinc-700 text-zinc-300 hover:text-white"
+                disabled={isDeletingOrder || isCancelling}
+              >
+                {isCancelling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Cancel"
+                )}
+              </Button>
+              <Button
+                onClick={() => void handleDeleteOrder()}
+                className="bg-red-600 text-white hover:bg-red-500"
+                disabled={isDeletingOrder || isCancelling}
+              >
+                {isDeletingOrder ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Delete Order"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

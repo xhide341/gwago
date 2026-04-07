@@ -1,10 +1,10 @@
-import { getProducts } from "@/actions/products";
+import { getOrderableProducts } from "@/actions/products";
 import { OrderCreateForm } from "@/components/orders/order-create-form";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export default async function NewOrderPage() {
-  const products = await getProducts();
+  const products = await getOrderableProducts();
 
   return (
     <div className="space-y-6">
