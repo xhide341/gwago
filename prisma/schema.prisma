@@ -92,6 +92,7 @@ model Variant {
   image           String?
   priceAdjustment Float   @default(0)
   isActive        Boolean @default(true)
+  archivedAt      DateTime?
 
   product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   stock     InventoryStock?
@@ -152,14 +153,22 @@ model Order {
 model OrderItem {
   id            String  @id @default(cuid())
   orderId       String
-  variantId     String
+  productIdSnapshot   String?
+  productNameSnapshot String?
+  variantId     String? // Nullable — set to null when variant is permanently deleted
   quantity      Int
   unitPrice     Float
   adjustedPrice Float?  // Admin-set override price (e.g. bulk discount)
   subtotal      Float
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  variant Variant @relation(fields: [variantId], references: [id])
+  // Snapshot of variant info at time of order — preserved even if variant is later deleted
+  variantName   String?
+  variantSku    String?
+  variantSize   String?
+  variantColor  String?
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 }
