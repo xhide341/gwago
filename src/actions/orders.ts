@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SelectedVariant } from "@/lib/mock-store";
 import { revalidatePath } from "next/cache";
 import {
   OrderStatus,
@@ -296,7 +297,7 @@ export async function createOrder(data: {
   const requiredStock = buildQuantityMap(data.items);
   const paymentReference = normalizeOptionalReference(data.paymentReference);
 
-  const order = await prisma.$transaction(async (tx) => {
+  const order = await prisma.$transaction(async (tx: TxClient) => {
     if (paymentReference && data.paymentMethod) {
       await assertReferenceUniqueOrThrow(tx, paymentReference);
     }
@@ -319,7 +320,9 @@ export async function createOrder(data: {
         product: { select: { id: true, name: true } },
       },
     });
-    const variantMap = new Map(variants.map((v) => [v.id, v]));
+    const variantMap = new Map<string, SelectedVariant>(
+      variants.map((v: SelectedVariant) => [v.id, v]),
+    );
 
     return tx.order.create({
       data: {
@@ -376,7 +379,7 @@ export async function createOrder(data: {
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   await requireAuth();
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TxClient) => {
     const order = await tx.order.findUnique({
       where: { id },
       include: { items: true },
@@ -417,7 +420,7 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 export async function deleteOrder(id: string) {
   await requireAuth();
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TxClient) => {
     const order = await tx.order.findUnique({
       where: { id },
       include: {
@@ -481,7 +484,7 @@ export async function updateOrder(
       ? undefined
       : normalizeOptionalReference(data.paymentReference);
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TxClient) => {
     const currentOrder = await tx.order.findUnique({
       where: { id },
       include: {
@@ -530,7 +533,9 @@ export async function updateOrder(
         product: { select: { id: true, name: true } },
       },
     });
-    const newVariantMap = new Map(newVariants.map((v) => [v.id, v]));
+    const newVariantMap = new Map<string, SelectedVariant>(
+      newVariants.map((v: SelectedVariant) => [v.id, v]),
+    );
 
     await tx.order.update({
       where: { id },

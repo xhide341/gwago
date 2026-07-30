@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getVariantDeleteDecision } from "@/lib/catalog-delete";
+import { InventoryStock } from "@/lib/mock-store";
 
 async function requireAuth() {
   const session = await auth();
@@ -48,7 +49,7 @@ export async function getLowStockAlerts() {
     orderBy: { variant: { product: { name: "asc" } } },
   });
 
-  return stocks.filter((stock) => stock.quantity <= stock.reorderLevel);
+  return stocks.filter((stock: InventoryStock) => stock.quantity <= stock.reorderLevel);
 }
 
 // Adjust stock quantity for a variant (add or subtract)
@@ -192,6 +193,7 @@ export async function deleteVariantFromInventory(variantId: string): Promise<{
   revalidatePath("/admin/archived");
   revalidatePath("/admin");
 
+
   return {
     status: "deleted",
     message: "Variant deleted.",
@@ -216,7 +218,7 @@ export async function getLowStockCount() {
   });
 
   return stocks.reduce(
-    (count, stock) => count + (stock.quantity <= stock.reorderLevel ? 1 : 0),
+    (count: number, stock: InventoryStock) => count + (stock.quantity <= stock.reorderLevel ? 1 : 0),
     0,
   );
 }

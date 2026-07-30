@@ -97,6 +97,32 @@ export interface Transaction {
   createdAt: Date;
 }
 
+// ─── Query Result / Composite Types ───
+export type SelectedVariant = Pick<Variant, "id" | "sku" | "size" | "color"> & {
+  product: Pick<Product, "id" | "name">;
+};
+
+export type VariantWithMeta = Variant & {
+  stock?: { quantity: number } | null;
+  _count: { orderItems: number };
+};
+
+export type ProductVariantImpact = Pick<Variant, "id" | "sku" | "size" | "color"> & {
+  stock: Pick<InventoryStock, "quantity"> | null;
+  _count: { orderItems: number };
+};
+
+export type OrderStatusGroup = {
+  status: OrderStatus;
+  _count: { _all: number };
+};
+
+export type PaymentMethodGroup = {
+  method: PaymentMethod;
+  _count: { _all: number };
+  _sum: { amount: number | null };
+};
+
 class MockStore {
   users: User[] = [];
   products: Product[] = [];

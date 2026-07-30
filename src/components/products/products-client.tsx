@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
@@ -559,7 +559,7 @@ function ProductDeleteDialog({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/70 text-zinc-300">
-                          {impact.variants.map((variant) => (
+                          {impact.variants.map((variant: ProductDeleteImpact["variants"][number]) => (
                             <tr key={variant.id}>
                               <td className="py-1.5 font-mono">
                                 {variant.sku}

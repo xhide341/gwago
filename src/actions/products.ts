@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Product, ProductVariantImpact, VariantWithMeta } from "@/lib/mock-store";
 import { revalidatePath } from "next/cache";
 import {
   getProductDeleteSummary,
@@ -16,7 +17,7 @@ async function requireAuth() {
 }
 
 async function archiveProductAndVariants(productId: string) {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: typeof prisma) => {
     await tx.product.update({
       where: { id: productId },
       data: { isActive: false },
@@ -103,8 +104,8 @@ export async function getProductDeleteImpact(id: string) {
 
   const deleteSummary = await getProductDeleteSummary(id);
 
-  const stockRecords = product.variants.filter((variant) =>
-    Boolean(variant.stock),
+  const stockRecords = product.variants.filter(
+    (variant: ProductVariantImpact) => Boolean(variant.stock),
   ).length;
 
   return {
@@ -119,7 +120,7 @@ export async function getProductDeleteImpact(id: string) {
     linkedOrdersByStatus: deleteSummary.linkedOrdersByStatus,
     canDeletePermanently: deleteSummary.linkedOrderItems === 0,
     recommendedAction: deleteSummary.recommendedAction,
-    variants: product.variants.map((variant) => ({
+    variants: product.variants.map((variant: ProductVariantImpact) => ({
       id: variant.id,
       sku: variant.sku,
       size: variant.size,
@@ -159,7 +160,7 @@ export async function updateProduct(id: string, formData: FormData) {
 
   const nextIsActive = formData.get("isActive") === "true";
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: typeof prisma) => {
     await tx.product.update({
       where: { id },
       data: {
@@ -441,7 +442,7 @@ export async function getArchivedProducts() {
   });
 
   return Promise.all(
-    products.map(async (product) => {
+    products.map(async (product: Product) => {
       const summary = await getProductDeleteSummary(product.id);
 
       return {
@@ -486,7 +487,7 @@ export async function getArchivedVariants() {
 export async function restoreProduct(id: string): Promise<{ message: string }> {
   await requireAuth();
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: typeof prisma) => {
     await tx.product.update({
       where: { id },
       data: { isActive: true },

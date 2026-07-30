@@ -89,12 +89,20 @@ const PAYMENT_COLORS: Record<string, string> = {
 // No mapping needed — display as-is
 
 // Custom tooltip for dark theme
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { color?: string; name: string; value: number }[];
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
       <p className="mb-1 text-xs font-medium text-zinc-400">{label}</p>
-      {payload.map((entry: any, i: number) => (
+      {payload.map((entry, i: number) => (
         <p key={i} className="text-sm" style={{ color: entry.color }}>
           {entry.name}:{" "}
           {typeof entry.value === "number" &&
@@ -107,7 +115,13 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-function PieTooltip({ active, payload }: any) {
+function PieTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { name: string; value: number }[];
+}) {
   if (!active || !payload?.length) return null;
   const data = payload[0];
 
@@ -119,7 +133,10 @@ function PieTooltip({ active, payload }: any) {
   );
 }
 
-function OrderStatusPieShape(props: any) {
+function OrderStatusPieShape(props: {
+  payload?: { fill?: string };
+  fill?: string;
+}) {
   const { payload, fill, ...sectorProps } = props;
   return (
     <Sector
@@ -130,7 +147,13 @@ function OrderStatusPieShape(props: any) {
   );
 }
 
-function CategoryRevenueBarShape(props: any) {
+function CategoryRevenueBarShape(props: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  payload?: { fill?: string };
+}) {
   const { x = 0, y = 0, width = 0, height = 0, payload } = props;
   return (
     <rect
@@ -155,10 +178,11 @@ export function DashboardCharts({ initialData }: Props) {
   const [data, setData] = useState<ChartData>(initialData);
   const [isPending, startTransition] = useTransition();
 
-  // Fetch new data when range changes
   useEffect(() => {
     if (range === "30d") {
-      setData(initialData);
+      startTransition(() => {
+        setData(initialData);
+      });
       return;
     }
     if (range === "custom") {
@@ -303,7 +327,7 @@ export function DashboardCharts({ initialData }: Props) {
                     tick={{ fill: "#71717a", fontSize: 11 }}
                     tickLine={{ stroke: "#3f3f46" }}
                     axisLine={{ stroke: "#3f3f46" }}
-                    tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+                    tickFormatter={(v: number) => `₱${(v / 1000).toFixed(0)}k`}
                   />
                   <YAxis
                     yAxisId="orders"
@@ -363,7 +387,9 @@ export function DashboardCharts({ initialData }: Props) {
                     paddingAngle={3}
                     stroke="none"
                     shape={<OrderStatusPieShape />}
-                    label={({ name, value }: any) => `${name} (${value})`}
+                    label={({ name, value }: { name?: string; value?: number }) =>
+                      `${name ?? ""} (${value ?? 0})`
+                    }
                   />
                   <Tooltip content={<PieTooltip />} />
                 </PieChart>
@@ -403,7 +429,7 @@ export function DashboardCharts({ initialData }: Props) {
                     tick={{ fill: "#71717a", fontSize: 11 }}
                     tickLine={{ stroke: "#3f3f46" }}
                     axisLine={{ stroke: "#3f3f46" }}
-                    tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+                    tickFormatter={(v: number) => `₱${(v / 1000).toFixed(0)}k`}
                   />
                   <YAxis
                     type="category"
@@ -452,7 +478,7 @@ export function DashboardCharts({ initialData }: Props) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {paymentMethodDist.map((pm) => {
                 const total = paymentMethodDist.reduce(
-                  (s, p) => s + p.amount,
+                  (s: number, p: PaymentMethodDist) => s + p.amount,
                   0,
                 );
                 const pct =

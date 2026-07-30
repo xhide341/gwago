@@ -1,6 +1,7 @@
 import { Package, AlertTriangle, ShoppingCart, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
+import { InventoryStock } from "@/lib/mock-store";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { getChartData } from "@/actions/dashboard";
 
@@ -18,8 +19,8 @@ export default async function DashboardPage() {
           },
         })
         .then(
-          (stocks) =>
-            stocks.filter((stock) => stock.quantity <= stock.reorderLevel)
+          (stocks: InventoryStock[]) =>
+            stocks.filter((stock: InventoryStock) => stock.quantity <= stock.reorderLevel)
               .length,
         ),
       prisma.order.count({ where: { status: "PENDING" } }),
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
           },
           _sum: { amount: true },
         })
-        .then((r) => r._sum.amount ?? 0),
+        .then((r: { _sum: { amount: number | null } }) => r._sum.amount ?? 0),
       getChartData({ range: "30d" }),
     ]);
 
