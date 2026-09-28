@@ -4,7 +4,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getVariantDeleteDecision } from "@/lib/catalog-delete";
-import { InventoryStock } from "@/lib/mock-store";
 
 async function requireAuth() {
   const session = await auth();
@@ -12,7 +11,6 @@ async function requireAuth() {
   return session;
 }
 
-// Get full inventory with product and variant info
 export async function getInventory() {
   await requireAuth();
   return prisma.inventoryStock.findMany({
@@ -31,7 +29,6 @@ export async function getInventory() {
   });
 }
 
-// Get variants with stock below reorder level
 export async function getLowStockAlerts() {
   await requireAuth();
   const stocks = await prisma.inventoryStock.findMany({
@@ -49,10 +46,9 @@ export async function getLowStockAlerts() {
     orderBy: { variant: { product: { name: "asc" } } },
   });
 
-  return stocks.filter((stock: InventoryStock) => stock.quantity <= stock.reorderLevel);
+  return stocks.filter((stock) => stock.quantity <= stock.reorderLevel);
 }
 
-// Adjust stock quantity for a variant (add or subtract)
 export async function adjustStock(variantId: string, adjustment: number) {
   await requireAuth();
 
@@ -76,7 +72,6 @@ export async function adjustStock(variantId: string, adjustment: number) {
   revalidatePath("/admin");
 }
 
-// Update variant details + stock from the inventory edit modal
 export async function updateVariantFromInventory(
   variantId: string,
   data: {
@@ -90,7 +85,6 @@ export async function updateVariantFromInventory(
 ) {
   await requireAuth();
 
-  // Update variant fields
   const { quantity, ...variantData } = data;
   if (Object.keys(variantData).length > 0) {
     await prisma.variant.update({
@@ -99,15 +93,12 @@ export async function updateVariantFromInventory(
     });
   }
 
-  // Update stock quantity only. Reorder level is controlled at the product level.
   if (quantity !== undefined) {
     await prisma.inventoryStock.update({
       where: { variantId },
       data: {
         ...(quantity !== undefined ? { quantity: Math.max(0, quantity) } : {}),
-        ...(quantity !== undefined && quantity > 0
-          ? { lastRestocked: new Date() }
-          : {}),
+        ...(quantity !== undefined && quantity > 0 ? { lastRestocked: new Date() } : {}),
       },
     });
   }
@@ -117,7 +108,6 @@ export async function updateVariantFromInventory(
   revalidatePath("/admin");
 }
 
-// Delete a variant and its inventory stock
 export async function deleteVariantFromInventory(variantId: string): Promise<{
   status: "deleted" | "archived" | "blocked";
   message: string;
@@ -193,14 +183,12 @@ export async function deleteVariantFromInventory(variantId: string): Promise<{
   revalidatePath("/admin/archived");
   revalidatePath("/admin");
 
-
   return {
     status: "deleted",
     message: "Variant deleted.",
   };
 }
 
-// Get low stock count for dashboard
 export async function getLowStockCount() {
   await requireAuth();
 
@@ -217,8 +205,5 @@ export async function getLowStockCount() {
     },
   });
 
-  return stocks.reduce(
-    (count: number, stock: InventoryStock) => count + (stock.quantity <= stock.reorderLevel ? 1 : 0),
-    0,
-  );
+  return stocks.reduce((count, stock) => count + (stock.quantity <= stock.reorderLevel ? 1 : 0), 0);
 }

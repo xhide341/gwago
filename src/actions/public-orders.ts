@@ -60,7 +60,6 @@ export async function submitPublicOrder(data: SubmitPublicOrderInput): Promise<P
       return { success: false, error: "Order must contain at least one item." };
     }
 
-    // Validate quantities
     const totalQuantity = data.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
     if (totalQuantity <= 0) {
       return { success: false, error: "Total quantity must be greater than zero." };
@@ -128,7 +127,7 @@ export async function submitPublicOrder(data: SubmitPublicOrderInput): Promise<P
       noteSections.push(`[CUSTOM SPECS & NOTES]:\n${data.customNotes.trim()}`);
     }
 
-    // Include roster breakdown in notes if player names were provided
+    // include roster breakdown  if player names were provided
     const rosterLines = data.items
       .filter((i) => i.playerName?.trim() || i.playerNumber?.trim())
       .map(
@@ -160,7 +159,6 @@ export async function submitPublicOrder(data: SubmitPublicOrderInput): Promise<P
       },
     });
 
-    // Revalidate admin pages so new pending orders appear on admin dashboard
     revalidatePath("/admin/orders");
     revalidatePath("/admin");
 

@@ -4,12 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SelectedVariant } from "@/lib/mock-store";
 import { revalidatePath } from "next/cache";
-import {
-  OrderStatus,
-  PaymentMethod,
-  Prisma,
-  SalesChannel,
-} from "@/generated/prisma/client";
+import { OrderStatus, PaymentMethod, Prisma, SalesChannel } from "@/generated/prisma/client";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -45,8 +40,7 @@ function validateOrderItems(
   items: Array<{ variantId: string | null; quantity: number }>,
   allowMissingVariant = false,
 ) {
-  if (items.length === 0)
-    throw new Error("Order must contain at least one item");
+  if (items.length === 0) throw new Error("Order must contain at least one item");
 
   for (const item of items) {
     if (!allowMissingVariant && !item.variantId) {
@@ -143,10 +137,7 @@ function buildQuantityMap(
   return map;
 }
 
-function addMapValues(
-  target: Map<string, number>,
-  source: Map<string, number>,
-) {
+function addMapValues(target: Map<string, number>, source: Map<string, number>) {
   for (const [variantId, quantity] of source) {
     const prev = target.get(variantId) ?? 0;
     target.set(variantId, prev + quantity);
@@ -183,19 +174,14 @@ function buildOrderItemSnapshot(
     subtotal: item.subtotal,
     productIdSnapshot: variant?.product.id ?? item.productIdSnapshot ?? null,
     productNameSnapshot: variant?.product.name ?? item.productNameSnapshot ?? null,
-    variantName:
-      variant ? `${variant.product.name} - ${variant.size}` : item.variantName ?? null,
+    variantName: variant ? `${variant.product.name} - ${variant.size}` : (item.variantName ?? null),
     variantSku: variant?.sku ?? item.variantSku ?? null,
     variantSize: variant?.size ?? item.variantSize ?? null,
     variantColor: variant?.color ?? item.variantColor ?? null,
   };
 }
 
-async function applyStockDeltaOrThrow(
-  tx: TxClient,
-  deltaByVariant: Map<string, number>,
-) {
-  // Apply decrements first so insufficiency fails immediately.
+async function applyStockDeltaOrThrow(tx: TxClient, deltaByVariant: Map<string, number>) {
   for (const [variantId, delta] of deltaByVariant) {
     if (delta >= 0) continue;
 
@@ -231,7 +217,6 @@ async function applyStockDeltaOrThrow(
   }
 }
 
-// Get all orders with items and transactions
 export async function getOrders() {
   await requireAuth();
   return prisma.order.findMany({
@@ -248,7 +233,6 @@ export async function getOrders() {
   });
 }
 
-// Get a single order by ID
 export async function getOrderById(id: string) {
   await requireAuth();
   return prisma.order.findUnique({
@@ -264,7 +248,6 @@ export async function getOrderById(id: string) {
   });
 }
 
-// Create a new order with items
 export async function createOrder(data: {
   customerName: string;
   customerEmail?: string;
@@ -286,10 +269,7 @@ export async function createOrder(data: {
     subtotal: item.quantity * (item.adjustedPrice ?? item.unitPrice),
   }));
 
-  const totalAmount = itemsWithSubtotal.reduce(
-    (sum, item) => sum + item.subtotal,
-    0,
-  );
+  const totalAmount = itemsWithSubtotal.reduce((sum, item) => sum + item.subtotal, 0);
 
   const channel = data.salesChannel || "DIRECT";
   const channelFee = Math.round((data.channelFee ?? 0) * 100) / 100;
@@ -345,7 +325,7 @@ export async function createOrder(data: {
               subtotal: item.subtotal,
               productIdSnapshot: v?.product.id ?? null,
               productNameSnapshot: v?.product.name ?? null,
-              // Snapshot for historical display after variant deletion
+              // snapshot
               variantName: v ? `${v.product.name} – ${v.size}` : null,
               variantSku: v?.sku ?? null,
               variantSize: v?.size ?? null,
@@ -353,7 +333,7 @@ export async function createOrder(data: {
             };
           }),
         },
-        // Auto-create a payment transaction if method provided.
+        // auto-create a payment transaction if method provided
         ...(data.paymentMethod && {
           transactions: {
             create: {
@@ -375,7 +355,6 @@ export async function createOrder(data: {
   return order;
 }
 
-// Update order status
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   await requireAuth();
 
@@ -397,10 +376,7 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 
     if (!wasDeducted && shouldBeDeducted) {
       const reserveDelta = new Map<string, number>(
-        [...buildQuantityMap(order.items).entries()].map(([variantId, qty]) => [
-          variantId,
-          -qty,
-        ]),
+        [...buildQuantityMap(order.items).entries()].map(([variantId, qty]) => [variantId, -qty]),
       );
       await applyStockDeltaOrThrow(tx, reserveDelta);
     }
@@ -416,7 +392,6 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
   revalidatePath("/admin");
 }
 
-// Delete an order and restore reserved stock when applicable.
 export async function deleteOrder(id: string) {
   await requireAuth();
 
@@ -447,7 +422,6 @@ export async function deleteOrder(id: string) {
   revalidatePath("/admin");
 }
 
-// Update order details (customer info, channel, items)
 export async function updateOrder(
   id: string,
   data: {
@@ -465,17 +439,13 @@ export async function updateOrder(
   await requireAuth();
   validateOrderItems(data.items, true);
 
-  // Calculate totals - use adjustedPrice when set, otherwise unitPrice.
   const itemsWithSubtotal = data.items.map((item) => ({
     ...item,
     adjustedPrice: item.adjustedPrice ?? null,
     subtotal: item.quantity * (item.adjustedPrice ?? item.unitPrice),
   }));
 
-  const totalAmount = itemsWithSubtotal.reduce(
-    (sum, item) => sum + item.subtotal,
-    0,
-  );
+  const totalAmount = itemsWithSubtotal.reduce((sum, item) => sum + item.subtotal, 0);
 
   const channelFee = Math.round((data.channelFee ?? 0) * 100) / 100;
   const netAmount = Math.round((totalAmount - channelFee) * 100) / 100;
@@ -499,9 +469,8 @@ export async function updateOrder(
     if (!currentOrder) throw new Error("Order not found");
 
     const paymentTx =
-      currentOrder.transactions.find(
-        (transaction) => transaction.type === "PAYMENT",
-      ) ?? currentOrder.transactions[0];
+      currentOrder.transactions.find((transaction) => transaction.type === "PAYMENT") ??
+      currentOrder.transactions[0];
 
     if (paymentReference !== undefined && paymentReference && paymentTx) {
       await assertReferenceUniqueOrThrow(tx, paymentReference, paymentTx.id);
@@ -519,7 +488,6 @@ export async function updateOrder(
 
     await tx.orderItem.deleteMany({ where: { orderId: id } });
 
-    // Fetch variant snapshots for newly created items
     const newVariantIds = itemsWithSubtotal
       .map((item) => item.variantId)
       .filter((variantId): variantId is string => Boolean(variantId));
@@ -551,9 +519,7 @@ export async function updateOrder(
         netAmount,
         items: {
           create: itemsWithSubtotal.map((item) => {
-            const v = item.variantId
-              ? newVariantMap.get(item.variantId)
-              : undefined;
+            const v = item.variantId ? newVariantMap.get(item.variantId) : undefined;
             if (!v) {
               return buildOrderItemSnapshot(item);
             }
@@ -590,11 +556,7 @@ export async function updateOrder(
   revalidatePath("/admin");
 }
 
-// Update a transaction's payment method
-export async function updateTransactionMethod(
-  transactionId: string,
-  method: PaymentMethod,
-) {
+export async function updateTransactionMethod(transactionId: string, method: PaymentMethod) {
   await requireAuth();
 
   await prisma.transaction.update({
@@ -605,7 +567,6 @@ export async function updateTransactionMethod(
   revalidatePath("/admin/orders");
 }
 
-// Get order stats for dashboard
 export async function getOrderStats() {
   await requireAuth();
 
@@ -630,7 +591,6 @@ export async function getOrderStats() {
   };
 }
 
-// Get recent orders (last 5) for dashboard
 export async function getRecentOrders() {
   await requireAuth();
   return prisma.order.findMany({
