@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
 
-// ─── Constants ───
+// Constants
 const statusStyles: Record<string, string> = {
   PENDING: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
   PROCESSING: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -38,7 +38,7 @@ const channelLabels: Record<string, string> = {
   OTHER: "Other",
 };
 
-// ─── Types ───
+// Types
 type Order = {
   id: string;
   customerName: string;
@@ -54,7 +54,7 @@ type Order = {
   _count: { items: number };
 };
 
-// ─── Main Component ───
+// Main Component
 export function OrdersClient({ orders }: { orders: Order[] }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -73,7 +73,7 @@ export function OrdersClient({ orders }: { orders: Order[] }) {
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative w-full max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white" />
           <Input
             placeholder="Search by customer or order ID..."
             value={search}
@@ -104,9 +104,7 @@ export function OrdersClient({ orders }: { orders: Order[] }) {
         </CardHeader>
         <CardContent>
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-sm text-zinc-500">
-              No orders found.
-            </p>
+            <p className="py-8 text-center text-sm text-zinc-500">No orders found.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -126,9 +124,7 @@ export function OrdersClient({ orders }: { orders: Order[] }) {
                   {filtered.map((order) => (
                     <tr
                       key={order.id}
-                      onClick={() =>
-                        router.push(`/admin/orders/${order.id}/edit`)
-                      }
+                      onClick={() => router.push(`/admin/orders/${order.id}/edit`)}
                       className="cursor-pointer transition-colors hover:bg-zinc-800/50"
                     >
                       <td className="py-3 font-mono text-xs text-zinc-400">
@@ -138,13 +134,9 @@ export function OrdersClient({ orders }: { orders: Order[] }) {
                       <td className="py-3">
                         <Badge
                           variant="outline"
-                          className={
-                            channelStyles[order.salesChannel] ??
-                            channelStyles.OTHER
-                          }
+                          className={channelStyles[order.salesChannel] ?? channelStyles.OTHER}
                         >
-                          {channelLabels[order.salesChannel] ??
-                            order.salesChannel}
+                          {channelLabels[order.salesChannel] ?? order.salesChannel}
                         </Badge>
                       </td>
                       <td className="py-3 text-zinc-400">
@@ -170,10 +162,7 @@ export function OrdersClient({ orders }: { orders: Order[] }) {
                         )}
                       </td>
                       <td className="py-3">
-                        <Badge
-                          variant="outline"
-                          className={statusStyles[order.status]}
-                        >
+                        <Badge variant="outline" className={statusStyles[order.status]}>
                           {order.status}
                         </Badge>
                       </td>

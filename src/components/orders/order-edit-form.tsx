@@ -97,13 +97,7 @@ type Product = {
   }[];
 };
 
-export function OrderEditForm({
-  order,
-  products,
-}: {
-  order: Order;
-  products: Product[];
-}) {
+export function OrderEditForm({ order, products }: { order: Order; products: Product[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const stockByVariant = useMemo(() => {
@@ -116,26 +110,17 @@ export function OrderEditForm({
     return map;
   }, [products]);
 
-  // Editable state
   const [customerName, setCustomerName] = useState(order.customerName);
   const [customerEmail, setCustomerEmail] = useState(order.customerEmail ?? "");
   const [customerPhone, setCustomerPhone] = useState(order.customerPhone ?? "");
   const [notes, setNotes] = useState(order.notes ?? "");
   const [status, setStatus] = useState(order.status);
-  const [salesChannel, setSalesChannel] = useState(
-    order.salesChannel ?? "DIRECT",
-  );
+  const [salesChannel, setSalesChannel] = useState(order.salesChannel ?? "DIRECT");
   const [channelFee, setChannelFee] = useState(order.channelFee ?? 0);
-  const [channelFeeInput, setChannelFeeInput] = useState<string | undefined>(
-    undefined,
-  );
-  const [paymentReference, setPaymentReference] = useState(
-    order.transactions[0]?.reference ?? "",
-  );
+  const [channelFeeInput, setChannelFeeInput] = useState<string | undefined>(undefined);
+  const [paymentReference, setPaymentReference] = useState(order.transactions[0]?.reference ?? "");
   const [isGeneratingReference, setIsGeneratingReference] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState(
-    order.transactions[0]?.method ?? "CASH",
-  );
+  const [paymentMethod, setPaymentMethod] = useState(order.transactions[0]?.method ?? "CASH");
   const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
   const [isDeleteOrderDialogOpen, setIsDeleteOrderDialogOpen] = useState(false);
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
@@ -164,10 +149,7 @@ export function OrderEditForm({
       variantId: item.variant?.id ?? item.variantId,
       productIdSnapshot: item.productIdSnapshot,
       productNameSnapshot: item.productNameSnapshot,
-      productName:
-        item.variant?.product.name ??
-        item.productNameSnapshot ??
-        "Deleted product",
+      productName: item.variant?.product.name ?? item.productNameSnapshot ?? "Deleted product",
       productImage: item.variant?.product.image ?? null,
       size: item.variant?.size ?? item.variantSize ?? "Unknown size",
       color: item.variant?.color ?? item.variantColor ?? "Unknown color",
@@ -176,18 +158,15 @@ export function OrderEditForm({
       unitPrice: item.unitPrice,
       adjustedPrice: item.adjustedPrice as number | null,
       isVariantMissing: !item.variant,
-      stockAvailable:
-        item.variant
-          ? (stockByVariant.get(item.variant.id) ?? 0) +
-            (order.status === "CANCELLED" ? 0 : item.quantity)
-          : item.quantity,
+      stockAvailable: item.variant
+        ? (stockByVariant.get(item.variant.id) ?? 0) +
+          (order.status === "CANCELLED" ? 0 : item.quantity)
+        : item.quantity,
     })),
   );
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [deleteCandidateIndex, setDeleteCandidateIndex] = useState<
-    number | null
-  >(null);
+  const [deleteCandidateIndex, setDeleteCandidateIndex] = useState<number | null>(null);
   const [variantSearch, setVariantSearch] = useState("");
 
   const allVariants = useMemo(() => {
@@ -208,9 +187,7 @@ export function OrderEditForm({
 
   // Filtered variant search results
   const searchResults = useMemo(() => {
-    let results = allVariants.filter(
-      (v) => !items.some((item) => item.variantId === v.variantId),
-    );
+    let results = allVariants.filter((v) => !items.some((item) => item.variantId === v.variantId));
 
     if (variantSearch.trim()) {
       const q = variantSearch.toLowerCase();
@@ -229,8 +206,7 @@ export function OrderEditForm({
   // Computed totals
   const calculations = useMemo(() => {
     const subtotal = items.reduce(
-      (sum, item) =>
-        sum + item.quantity * (item.adjustedPrice ?? item.unitPrice),
+      (sum, item) => sum + item.quantity * (item.adjustedPrice ?? item.unitPrice),
       0,
     );
     const fee = Math.round(channelFee * 100) / 100;
@@ -260,9 +236,7 @@ export function OrderEditForm({
   function updateItemQty(index: number, delta: number) {
     setItems((prev) =>
       prev.map((item, i) =>
-        i === index
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item,
+        i === index ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item,
       ),
     );
   }
@@ -344,18 +318,9 @@ export function OrderEditForm({
           customerEmail: customerEmail || undefined,
           customerPhone: customerPhone || undefined,
           notes: notes || undefined,
-          salesChannel: salesChannel as
-            | "DIRECT"
-            | "SHOPEE"
-            | "LAZADA"
-            | "TIKTOK"
-            | "OTHER",
+          salesChannel: salesChannel as "DIRECT" | "SHOPEE" | "LAZADA" | "TIKTOK" | "OTHER",
           channelFee,
-          status: status as
-            | "PENDING"
-            | "PROCESSING"
-            | "COMPLETED"
-            | "CANCELLED",
+          status: status as "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED",
           paymentReference,
           items: items.map((item) => ({
             id: item.id,
@@ -374,9 +339,7 @@ export function OrderEditForm({
         router.push("/admin/orders");
       } catch (error) {
         console.error(error);
-        window.alert(
-          error instanceof Error ? error.message : "Unable to save order.",
-        );
+        window.alert(error instanceof Error ? error.message : "Unable to save order.");
       }
     });
   }
@@ -398,8 +361,7 @@ export function OrderEditForm({
         customerEmail: customerEmail || undefined,
         notes: notes || undefined,
         salesChannel,
-        paymentMethod:
-          order.transactions.length > 0 ? paymentMethod : undefined,
+        paymentMethod: order.transactions.length > 0 ? paymentMethod : undefined,
         paymentReference: paymentReference || undefined,
         subtotal: calculations.subtotal,
         channelFee: calculations.channelFee,
@@ -440,9 +402,7 @@ export function OrderEditForm({
       router.push("/admin/orders");
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Unable to delete this order.",
-      );
+      toast.error(error instanceof Error ? error.message : "Unable to delete this order.");
     } finally {
       setIsDeletingOrder(false);
     }
@@ -460,9 +420,7 @@ export function OrderEditForm({
         {/* Customer Info */}
         <Card className="border-zinc-800 bg-zinc-900/50">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-400">
-              Customer Info
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-zinc-400">Customer Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -506,9 +464,7 @@ export function OrderEditForm({
         {/* Order Items */}
         <Card className="border-zinc-800 bg-zinc-900/50">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-zinc-400">
-              Order Items
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-zinc-400">Order Items</CardTitle>
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -522,9 +478,7 @@ export function OrderEditForm({
               </DialogTrigger>
               <DialogContent className="max-w-2xl border-zinc-800 bg-zinc-950">
                 <DialogHeader>
-                  <DialogTitle className="text-white">
-                    Add Products to Order
-                  </DialogTitle>
+                  <DialogTitle className="text-white">Add Products to Order</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <div className="relative mb-4 flex items-center">
@@ -546,17 +500,13 @@ export function OrderEditForm({
                           key={v.variantId}
                           type="button"
                           onClick={() => addVariant(v)}
-                          className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-zinc-800 border-b border-zinc-800/50 last:border-0"
+                          className="flex w-full items-center justify-between border-b border-zinc-800/50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-zinc-800"
                         >
                           <div>
-                            <p className="text-sm font-medium text-white">
-                              {v.productName}
-                            </p>
+                            <p className="text-sm font-medium text-white">{v.productName}</p>
                             <p className="text-xs text-zinc-500">
                               {v.size} / {v.color}
-                              <span className="ml-2 font-mono text-zinc-600">
-                                {v.sku}
-                              </span>
+                              <span className="ml-2 font-mono text-zinc-600">{v.sku}</span>
                             </p>
                           </div>
                           <div className="text-right">
@@ -577,8 +527,8 @@ export function OrderEditForm({
                       No products match your search.
                     </div>
                   ) : (
-                    <div className="mt-2 rounded-lg border flex flex-col items-center justify-center border-dashed border-zinc-800 bg-zinc-900/50 p-8 text-center text-sm text-zinc-500">
-                      <Package className="h-6 w-6 text-zinc-600 mb-2" />
+                    <div className="mt-2 flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-800 bg-zinc-900/50 p-8 text-center text-sm text-zinc-500">
+                      <Package className="mb-2 h-6 w-6 text-zinc-600" />
                       Type to search for available products
                     </div>
                   )}
@@ -591,9 +541,8 @@ export function OrderEditForm({
               <div className="flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-200">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
-                  This order includes catalog items that were deleted or retired.
-                  They remain in the order history, but their line items are now
-                  read-only.
+                  This order includes catalog items that were deleted or retired. They remain in the
+                  order history, but their line items are now read-only.
                 </p>
               </div>
             ) : null}
@@ -628,9 +577,7 @@ export function OrderEditForm({
                         </div>
                         <div className="min-h-10">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-white">
-                              {item.productName}
-                            </p>
+                            <p className="font-medium text-white">{item.productName}</p>
                             {item.isVariantMissing ? (
                               <Badge
                                 variant="outline"
@@ -642,9 +589,7 @@ export function OrderEditForm({
                           </div>
                           <p className="mt-0.5 text-sm text-zinc-500">
                             {item.size} / {item.color}
-                            <span className="ml-2 font-mono text-xs text-zinc-600">
-                              {item.sku}
-                            </span>
+                            <span className="ml-2 font-mono text-xs text-zinc-600">{item.sku}</span>
                           </p>
                         </div>
                       </div>
@@ -688,9 +633,7 @@ export function OrderEditForm({
 
                       {/* Unit price (base - read-only label) */}
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-zinc-500">
-                          Base Price
-                        </span>
+                        <span className="text-xs text-zinc-500">Base Price</span>
                         <span className="w-28 text-sm text-zinc-400">
                           ₱{" "}
                           {item.unitPrice.toLocaleString("en-PH", {
@@ -701,9 +644,7 @@ export function OrderEditForm({
 
                       {/* Adjusted price */}
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-zinc-500">
-                          Adjusted Price ₱
-                        </span>
+                        <span className="text-xs text-zinc-500">Adjusted Price ₱</span>
                         <Input
                           type="number"
                           step="0.01"
@@ -711,14 +652,10 @@ export function OrderEditForm({
                           disabled={item.isVariantMissing}
                           value={
                             item.adjustedPriceInput ??
-                            (item.adjustedPrice !== null
-                              ? item.adjustedPrice.toFixed(2)
-                              : "")
+                            (item.adjustedPrice !== null ? item.adjustedPrice.toFixed(2) : "")
                           }
                           placeholder={item.unitPrice.toFixed(2)}
-                          onChange={(e) =>
-                            updateItemAdjustedPrice(index, e.target.value)
-                          }
+                          onChange={(e) => updateItemAdjustedPrice(index, e.target.value)}
                           onBlur={() => handleAdjustedPriceBlur(index)}
                           className="h-8 w-28 border-zinc-700 bg-zinc-800 text-sm text-white placeholder:text-zinc-600"
                         />
@@ -729,26 +666,25 @@ export function OrderEditForm({
                         <p className="text-xs text-zinc-500">Line total</p>
                         <p className="text-sm font-medium text-white">
                           &#8369;
-                          {(
-                            item.quantity *
-                            (item.adjustedPrice ?? item.unitPrice)
-                          ).toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </p>
-                        {item.adjustedPrice !== null &&
-                          item.adjustedPrice < item.unitPrice && (
-                            <p className="text-xs text-emerald-400">
-                              -&#8369;
-                              {(
-                                (item.unitPrice - item.adjustedPrice) *
-                                item.quantity
-                              ).toLocaleString("en-PH", {
-                                minimumFractionDigits: 2,
-                              })}{" "}
-                              discount
-                            </p>
+                          {(item.quantity * (item.adjustedPrice ?? item.unitPrice)).toLocaleString(
+                            "en-PH",
+                            {
+                              minimumFractionDigits: 2,
+                            },
                           )}
+                        </p>
+                        {item.adjustedPrice !== null && item.adjustedPrice < item.unitPrice && (
+                          <p className="text-xs text-emerald-400">
+                            -&#8369;
+                            {((item.unitPrice - item.adjustedPrice) * item.quantity).toLocaleString(
+                              "en-PH",
+                              {
+                                minimumFractionDigits: 2,
+                              },
+                            )}{" "}
+                            discount
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -757,21 +693,15 @@ export function OrderEditForm({
             )}
           </CardContent>
 
-          <Dialog
-            open={deleteCandidateIndex !== null}
-            onOpenChange={handleDeleteDialogChange}
-          >
+          <Dialog open={deleteCandidateIndex !== null} onOpenChange={handleDeleteDialogChange}>
             <DialogContent className="max-w-md border-zinc-800 bg-zinc-950">
               <DialogHeader>
                 <DialogTitle className="text-white">Remove item?</DialogTitle>
               </DialogHeader>
               <p className="text-sm text-zinc-400">
                 This will remove{" "}
-                {deleteCandidateIndex !== null &&
-                items[deleteCandidateIndex] ? (
-                  <span className="text-blue-500">
-                    {items[deleteCandidateIndex].productName}
-                  </span>
+                {deleteCandidateIndex !== null && items[deleteCandidateIndex] ? (
+                  <span className="text-blue-500">{items[deleteCandidateIndex].productName}</span>
                 ) : (
                   "this item"
                 )}{" "}
@@ -802,9 +732,7 @@ export function OrderEditForm({
         {/* Status & Channel */}
         <Card className="border-zinc-800 bg-zinc-900/50">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-400">
-              Order Settings
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-zinc-400">Order Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -815,14 +743,10 @@ export function OrderEditForm({
                 className="flex flex-wrap gap-1.5"
               >
                 <div>
-                  <RadioGroupItem
-                    value="PENDING"
-                    id="status-pending"
-                    className="peer sr-only"
-                  />
+                  <RadioGroupItem value="PENDING" id="status-pending" className="peer sr-only" />
                   <Label
                     htmlFor="status-pending"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-yellow-500/50 hover:text-yellow-400 peer-data-[state=checked]:border-yellow-500/50 peer-data-[state=checked]:bg-yellow-500/10 peer-data-[state=checked]:text-yellow-400"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-yellow-500/50 peer-data-[state=checked]:bg-yellow-500/10 peer-data-[state=checked]:text-yellow-400 hover:border-yellow-500/50 hover:text-yellow-400"
                   >
                     Pending
                   </Label>
@@ -835,7 +759,7 @@ export function OrderEditForm({
                   />
                   <Label
                     htmlFor="status-processing"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 peer-data-[state=checked]:border-blue-500/50 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-blue-500/50 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 hover:border-blue-500/50 hover:text-blue-400"
                   >
                     Processing
                   </Label>
@@ -848,7 +772,7 @@ export function OrderEditForm({
                   />
                   <Label
                     htmlFor="status-completed"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-emerald-500/50 hover:text-emerald-400 peer-data-[state=checked]:border-emerald-500/50 peer-data-[state=checked]:bg-emerald-500/10 peer-data-[state=checked]:text-emerald-400"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-emerald-500/50 peer-data-[state=checked]:bg-emerald-500/10 peer-data-[state=checked]:text-emerald-400 hover:border-emerald-500/50 hover:text-emerald-400"
                   >
                     Completed
                   </Label>
@@ -861,7 +785,7 @@ export function OrderEditForm({
                   />
                   <Label
                     htmlFor="status-cancelled"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-red-500/50 hover:text-red-400 peer-data-[state=checked]:border-red-500/50 peer-data-[state=checked]:bg-red-500/10 peer-data-[state=checked]:text-red-400"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-red-500/50 peer-data-[state=checked]:bg-red-500/10 peer-data-[state=checked]:text-red-400 hover:border-red-500/50 hover:text-red-400"
                   >
                     Cancelled
                   </Label>
@@ -877,66 +801,46 @@ export function OrderEditForm({
                 className="flex flex-wrap gap-1.5"
               >
                 <div>
-                  <RadioGroupItem
-                    value="DIRECT"
-                    id="channel-direct"
-                    className="peer sr-only"
-                  />
+                  <RadioGroupItem value="DIRECT" id="channel-direct" className="peer sr-only" />
                   <Label
                     htmlFor="channel-direct"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-300 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 peer-data-[state=checked]:text-white"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 peer-data-[state=checked]:text-white hover:border-zinc-500 hover:text-zinc-300"
                   >
                     Direct
                   </Label>
                 </div>
                 <div>
-                  <RadioGroupItem
-                    value="SHOPEE"
-                    id="channel-shopee"
-                    className="peer sr-only"
-                  />
+                  <RadioGroupItem value="SHOPEE" id="channel-shopee" className="peer sr-only" />
                   <Label
                     htmlFor="channel-shopee"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-orange-500/50 hover:text-orange-400 peer-data-[state=checked]:border-orange-500/50 peer-data-[state=checked]:bg-orange-500/10 peer-data-[state=checked]:text-orange-400"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-orange-500/50 peer-data-[state=checked]:bg-orange-500/10 peer-data-[state=checked]:text-orange-400 hover:border-orange-500/50 hover:text-orange-400"
                   >
                     Shopee
                   </Label>
                 </div>
                 <div>
-                  <RadioGroupItem
-                    value="LAZADA"
-                    id="channel-lazada"
-                    className="peer sr-only"
-                  />
+                  <RadioGroupItem value="LAZADA" id="channel-lazada" className="peer sr-only" />
                   <Label
                     htmlFor="channel-lazada"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 peer-data-[state=checked]:border-blue-500/50 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-blue-500/50 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 hover:border-blue-500/50 hover:text-blue-400"
                   >
                     Lazada
                   </Label>
                 </div>
                 <div>
-                  <RadioGroupItem
-                    value="TIKTOK"
-                    id="channel-tiktok"
-                    className="peer sr-only"
-                  />
+                  <RadioGroupItem value="TIKTOK" id="channel-tiktok" className="peer sr-only" />
                   <Label
                     htmlFor="channel-tiktok"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-pink-500/50 hover:text-pink-400 peer-data-[state=checked]:border-pink-500/50 peer-data-[state=checked]:bg-pink-500/10 peer-data-[state=checked]:text-pink-400"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-pink-500/50 peer-data-[state=checked]:bg-pink-500/10 peer-data-[state=checked]:text-pink-400 hover:border-pink-500/50 hover:text-pink-400"
                   >
                     TikTok
                   </Label>
                 </div>
                 <div>
-                  <RadioGroupItem
-                    value="OTHER"
-                    id="channel-other"
-                    className="peer sr-only"
-                  />
+                  <RadioGroupItem value="OTHER" id="channel-other" className="peer sr-only" />
                   <Label
                     htmlFor="channel-other"
-                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-300 peer-data-[state=checked]:border-zinc-500/50 peer-data-[state=checked]:bg-zinc-500/10 peer-data-[state=checked]:text-zinc-300"
+                    className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-zinc-500/50 peer-data-[state=checked]:bg-zinc-500/10 peer-data-[state=checked]:text-zinc-300 hover:border-zinc-500 hover:text-zinc-300"
                   >
                     Other
                   </Label>
@@ -953,77 +857,52 @@ export function OrderEditForm({
                     setPaymentMethod(value);
                     void updateTransactionMethod(
                       order.transactions[0].id,
-                      value as
-                        | "CASH"
-                        | "GCASH"
-                        | "BANK_TRANSFER"
-                        | "CREDIT_CARD"
-                        | "OTHER",
+                      value as "CASH" | "GCASH" | "BANK_TRANSFER" | "CREDIT_CARD" | "OTHER",
                     );
                   }}
                   className="flex flex-wrap gap-1.5"
                 >
                   <div>
-                    <RadioGroupItem
-                      value="CASH"
-                      id="pay-cash"
-                      className="peer sr-only"
-                    />
+                    <RadioGroupItem value="CASH" id="pay-cash" className="peer sr-only" />
                     <Label
                       htmlFor="pay-cash"
-                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-emerald-500/50 hover:text-emerald-400 peer-data-[state=checked]:border-emerald-500/50 peer-data-[state=checked]:bg-emerald-500/10 peer-data-[state=checked]:text-emerald-400"
+                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-emerald-500/50 peer-data-[state=checked]:bg-emerald-500/10 peer-data-[state=checked]:text-emerald-400 hover:border-emerald-500/50 hover:text-emerald-400"
                     >
                       Cash
                     </Label>
                   </div>
                   <div>
-                    <RadioGroupItem
-                      value="GCASH"
-                      id="pay-gcash"
-                      className="peer sr-only"
-                    />
+                    <RadioGroupItem value="GCASH" id="pay-gcash" className="peer sr-only" />
                     <Label
                       htmlFor="pay-gcash"
-                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-blue-500/50 hover:text-blue-400 peer-data-[state=checked]:border-blue-500/50 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400"
+                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-blue-500/50 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 hover:border-blue-500/50 hover:text-blue-400"
                     >
                       GCash
                     </Label>
                   </div>
                   <div>
-                    <RadioGroupItem
-                      value="BANK_TRANSFER"
-                      id="pay-bank"
-                      className="peer sr-only"
-                    />
+                    <RadioGroupItem value="BANK_TRANSFER" id="pay-bank" className="peer sr-only" />
                     <Label
                       htmlFor="pay-bank"
-                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-purple-500/50 hover:text-purple-400 peer-data-[state=checked]:border-purple-500/50 peer-data-[state=checked]:bg-purple-500/10 peer-data-[state=checked]:text-purple-400"
+                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-purple-500/50 peer-data-[state=checked]:bg-purple-500/10 peer-data-[state=checked]:text-purple-400 hover:border-purple-500/50 hover:text-purple-400"
                     >
                       Bank Transfer
                     </Label>
                   </div>
                   <div>
-                    <RadioGroupItem
-                      value="CREDIT_CARD"
-                      id="pay-card"
-                      className="peer sr-only"
-                    />
+                    <RadioGroupItem value="CREDIT_CARD" id="pay-card" className="peer sr-only" />
                     <Label
                       htmlFor="pay-card"
-                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-sky-500/50 hover:text-sky-400 peer-data-[state=checked]:border-sky-500/50 peer-data-[state=checked]:bg-sky-500/10 peer-data-[state=checked]:text-sky-400"
+                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-sky-500/50 peer-data-[state=checked]:bg-sky-500/10 peer-data-[state=checked]:text-sky-400 hover:border-sky-500/50 hover:text-sky-400"
                     >
                       Credit Card
                     </Label>
                   </div>
                   <div>
-                    <RadioGroupItem
-                      value="OTHER"
-                      id="pay-other"
-                      className="peer sr-only"
-                    />
+                    <RadioGroupItem value="OTHER" id="pay-other" className="peer sr-only" />
                     <Label
                       htmlFor="pay-other"
-                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-300 peer-data-[state=checked]:border-zinc-500/50 peer-data-[state=checked]:bg-zinc-500/10 peer-data-[state=checked]:text-zinc-300"
+                      className="flex cursor-pointer rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors peer-data-[state=checked]:border-zinc-500/50 peer-data-[state=checked]:bg-zinc-500/10 peer-data-[state=checked]:text-zinc-300 hover:border-zinc-500 hover:text-zinc-300"
                     >
                       Other
                     </Label>
@@ -1058,9 +937,7 @@ export function OrderEditForm({
 
             {order.transactions.length > 0 && (
               <div className="space-y-2 pt-1">
-                <Label className="text-xs text-zinc-500">
-                  Reference Number
-                </Label>
+                <Label className="text-xs text-zinc-500">Reference Number</Label>
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     value={paymentReference}
@@ -1090,9 +967,7 @@ export function OrderEditForm({
         {/* Order Summary */}
         <Card className="gap-0 border-zinc-800 bg-zinc-900/50">
           <CardHeader className="mb-6 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium text-zinc-400">
-              Order Summary
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-zinc-400">Order Summary</CardTitle>
             <span className="text-xs text-zinc-500">
               {new Date(order.createdAt).toLocaleDateString("en-PH", {
                 month: "short",
@@ -1104,7 +979,7 @@ export function OrderEditForm({
             </span>
           </CardHeader>
           <CardContent className="text-sm">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 mb-4">
+            <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
               <div className="flex justify-between text-zinc-400">
                 <span>Subtotal ({items.length} items)</span>
                 <span>
@@ -1145,9 +1020,7 @@ export function OrderEditForm({
               <Button
                 variant="outline"
                 onClick={() => void handlePrintReceipt()}
-                disabled={
-                  isPending || isPrintingReceipt || status !== "COMPLETED"
-                }
+                disabled={isPending || isPrintingReceipt || status !== "COMPLETED"}
                 className="flex-1 border-zinc-700 text-zinc-300 hover:text-white"
               >
                 {isPrintingReceipt ? (
@@ -1173,19 +1046,13 @@ export function OrderEditForm({
         </Card>
 
         {/* Actions */}
-        <div className="flex gap-2 mb-3">
+        <div className="mb-3 flex gap-2">
           <Button
             onClick={handleSave}
-            disabled={
-              isPending || isCancelling || isDeletingOrder || items.length === 0
-            }
+            disabled={isPending || isCancelling || isDeletingOrder || items.length === 0}
             className="flex-1 bg-white text-black hover:bg-zinc-200 has-[>svg]:px-4"
           >
-            {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>Save Changes</>
-            )}
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Save Changes</>}
           </Button>
 
           <Button
@@ -1194,40 +1061,27 @@ export function OrderEditForm({
             disabled={isCancelling || isDeletingOrder}
             className="flex-1 border-zinc-700 text-zinc-400 hover:text-white"
           >
-            {isCancelling ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              "Cancel"
-            )}
+            {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel"}
           </Button>
         </div>
 
-        <Dialog
-          open={isDeleteOrderDialogOpen}
-          onOpenChange={setIsDeleteOrderDialogOpen}
-        >
+        <Dialog open={isDeleteOrderDialogOpen} onOpenChange={setIsDeleteOrderDialogOpen}>
           <DialogTrigger asChild>
             <Button
               type="button"
               className="w-full bg-red-600 text-white hover:bg-red-500"
               disabled={isPending || isDeletingOrder || isCancelling}
             >
-              {isDeletingOrder ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Delete this order"
-              )}
+              {isDeletingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete this order"}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md border-zinc-800 bg-zinc-950">
             <DialogHeader>
-              <DialogTitle className="text-white">
-                Delete this order?
-              </DialogTitle>
+              <DialogTitle className="text-white">Delete this order?</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-zinc-400">
-              This action cannot be undone. The order and its transactions will
-              be permanently deleted.
+              This action cannot be undone. The order and its transactions will be permanently
+              deleted.
             </p>
             <div className="mt-2 flex justify-end gap-2">
               <Button
@@ -1236,22 +1090,14 @@ export function OrderEditForm({
                 className="border-zinc-700 text-zinc-300 hover:text-white"
                 disabled={isDeletingOrder || isCancelling}
               >
-                {isCancelling ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Cancel"
-                )}
+                {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel"}
               </Button>
               <Button
                 onClick={() => void handleDeleteOrder()}
                 className="bg-red-600 text-white hover:bg-red-500"
                 disabled={isDeletingOrder || isCancelling}
               >
-                {isDeletingOrder ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Delete Order"
-                )}
+                {isDeletingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Order"}
               </Button>
             </div>
           </DialogContent>
