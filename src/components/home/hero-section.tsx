@@ -30,9 +30,6 @@ export function HeroSection() {
       },
     });
 
-    // Animate the two clipping rectangles from size 0 (spawning from nothing)
-    // Rect 1 starts at bottom-left (28%, 68%) and blooms to cover full scope
-    // Rect 2 starts at top-right (72%, 32%) and blooms to cover full scope
     tl.fromTo(
       "#clip-r1",
       { attr: { x: 0.28, y: 0.68, width: 0, height: 0 } },
@@ -57,7 +54,6 @@ export function HeroSection() {
       0,
     );
 
-    // Counter-zoom on the single background
     tl.fromTo(
       ".hero-bg",
       { scale: 1.12 },
@@ -65,12 +61,10 @@ export function HeroSection() {
       0,
     );
 
-    // Trigger text/content animations smoothly as points merge
     tl.add(() => {
       setIsInView(true);
     }, "-=0.75");
 
-    // Scroll-driven parallax on desktop viewports using CSS variable bridge
     const mm = gsap.matchMedia();
 
     mm.add("(min-width: 1024px)", () => {
@@ -101,7 +95,7 @@ export function HeroSection() {
 
   return (
     <section className="relative z-20 px-2">
-      {/* Geometric SVG Union ClipPath (Two Expanding Rectangles Spawning From 0) */}
+      {/* Geometric SVG */}
       <svg className="pointer-events-none absolute h-0 w-0" aria-hidden="true">
         <defs>
           <clipPath id="gwago-hero-clip" clipPathUnits="objectBoundingBox">
@@ -115,13 +109,12 @@ export function HeroSection() {
 
       {/* Frame & Content Wrapper */}
       <div className="relative flex w-full flex-col">
-        {/* Card Host Frame with edited notched borders */}
         <div
           id="hero-host-frame"
           ref={heroContainerRef}
           className={`relative flex h-[75svh] w-full flex-col rounded-2xl lg:h-[calc(100svh-1*1rem)] lg:rounded-xl lg:rounded-br-xl ${isInView ? "is-inView" : ""}`}
         >
-          {/* ONE Single Unified Background (Clipped by the two expanding points) */}
+          {/* One Single Unified Background */}
           <div
             className={`absolute inset-0 size-full overflow-hidden rounded-2xl ${
               !animationDone
@@ -133,7 +126,7 @@ export function HeroSection() {
               {/* Ambient Glow */}
               <div className="animate-hero-glow pointer-events-none absolute inset-0 size-full [background:radial-gradient(ellipse_at_60%_50%,var(--hero-glow)_0%,transparent_65%)]" />
 
-              {/* Model — full bleed main image with dynamic translate3d parallax */}
+              {/* Model */}
               <div
                 className="pointer-events-none absolute inset-0 z-0 will-change-transform lg:-top-[10lvh] lg:h-[calc(100%+10lvh)]"
                 style={
@@ -172,7 +165,7 @@ export function HeroSection() {
             {/* Admin portal */}
             <Link
               href="/admin"
-              className="text-primary inline-flex h-8 items-center justify-center rounded-sm border border-white/20 bg-transparent px-2.5 text-xs font-medium tracking-wide uppercase backdrop-blur-sm transition-all duration-200 hover:border-white hover:bg-white/10 active:scale-95 sm:h-9 sm:px-3.5 sm:text-xs md:h-10 md:px-4 md:text-sm lg:h-11 lg:px-4.5 lg:text-base xl:h-12 xl:px-5"
+              className="inline-flex h-8 items-center justify-center rounded-sm border border-white/20 bg-transparent px-2.5 text-xs font-medium tracking-wide text-white uppercase backdrop-blur-sm transition-all duration-200 hover:border-white hover:bg-white/10 active:scale-95 sm:h-9 sm:px-3.5 sm:text-xs md:h-10 md:px-4 md:text-sm lg:h-11 lg:px-4.5 lg:text-base xl:h-12 xl:px-5"
             >
               Admin Portal
             </Link>
