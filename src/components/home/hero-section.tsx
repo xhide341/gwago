@@ -143,7 +143,7 @@ export function HeroSection() {
                   priority
                   quality={90}
                   sizes="100vw"
-                  className="object-cover object-bottom xl:object-bottom"
+                  className="object-cover object-[75%_bottom] md:object-bottom xl:object-bottom"
                 />
               </div>
             </div>
