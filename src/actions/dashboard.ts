@@ -2,11 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  OrderStatusGroup,
-  PaymentMethodGroup,
-  Product,
-} from "@/lib/mock-store";
+import { OrderStatusGroup, PaymentMethodGroup, Product } from "@/lib/mock-store";
 
 export type DailyRevenue = { date: string; revenue: number; orders: number };
 export type CategoryBreakdown = {
@@ -28,12 +24,10 @@ export type ChartData = {
   paymentMethodDist: PaymentMethodDist[];
 };
 
-// Accepted range keys
 export type DateRange = "1d" | "7d" | "30d" | "custom";
 
 export type DateRangeInput =
-  | { range: "1d" | "7d" | "30d" }
-  | { range: "custom"; from: string; to: string }; // ISO date strings
+  { range: "1d" | "7d" | "30d" } | { range: "custom"; from: string; to: string };
 
 function getDateBounds(input: DateRangeInput): { start: Date; end: Date } {
   if (input.range === "custom") {
@@ -70,16 +64,12 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
 
   const dateFilter = { gte: startDate, lte: endDate };
 
-  // --- Daily revenue + order count ---
   const transactions = await prisma.transaction.findMany({
     where: { type: "PAYMENT", createdAt: dateFilter },
     select: { createdAt: true, amount: true, orderId: true },
   });
 
-  const revenueByDay = new Map<
-    string,
-    { revenue: number; orderIds: Set<string> }
-  >();
+  const revenueByDay = new Map<string, { revenue: number; orderIds: Set<string> }>();
   for (const t of transactions) {
     const day = t.createdAt.toLocaleDateString("en-US", {
       month: "short",
@@ -102,21 +92,17 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
     }),
   );
 
-  // --- Order status distribution ---
   const statusGroups = await prisma.order.groupBy({
     by: ["status"],
     where: { createdAt: dateFilter },
     _count: { _all: true },
   });
 
-  const orderStatusDist: OrderStatusDist[] = statusGroups.map(
-    (g: OrderStatusGroup) => ({
-      status: g.status,
-      count: g._count._all,
-    }),
-  );
+  const orderStatusDist: OrderStatusDist[] = statusGroups.map((g: OrderStatusGroup) => ({
+    status: g.status,
+    count: g._count._all,
+  }));
 
-  // --- Revenue by product category ---
   const [orderItems, productCategories] = await Promise.all([
     prisma.orderItem.findMany({
       where: {
@@ -152,7 +138,6 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
         b.revenue - a.revenue || a.category.localeCompare(b.category),
     );
 
-  // --- Payment method distribution ---
   const methodGroups = await prisma.transaction.groupBy({
     by: ["method"],
     where: { type: "PAYMENT", createdAt: dateFilter },

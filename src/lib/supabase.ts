@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Server-side Supabase client with service role key (for Storage uploads)
+export const supabaseUrl = process.env.SUPABASE_URL || "";
+export const supabaseKey = process.env.SUPABASE_SECRET_KEY || "";
+
 export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  supabaseUrl || "https://placeholder-url.supabase.co",
+  supabaseKey || "placeholder-service-key",
 );

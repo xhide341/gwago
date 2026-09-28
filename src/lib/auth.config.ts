@@ -1,12 +1,8 @@
 import Google from "next-auth/providers/google";
 import type { NextAuthConfig } from "next-auth";
 
-// Comma-separated admin emails from env
-const adminEmails = (process.env.ADMIN_EMAILS || "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase());
+const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
 
-// Edge-compatible auth config — NO adapter, NO Prisma imports
 export default {
   session: { strategy: "jwt" },
   pages: {

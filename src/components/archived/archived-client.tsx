@@ -29,8 +29,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { restoreProduct, permanentlyDeleteProduct } from "@/actions/products";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 type Variant = {
   id: string;
   size: string;
@@ -74,15 +72,7 @@ type Props = {
   variants: ArchivedVariant[];
 };
 
-// ─── Delete eligibility badge ─────────────────────────────────────────────────
-
-function EligibilityBadge({
-  canDelete,
-  label,
-}: {
-  canDelete: boolean;
-  label?: string;
-}) {
+function EligibilityBadge({ canDelete, label }: { canDelete: boolean; label?: string }) {
   if (canDelete) {
     return (
       <Badge
@@ -95,17 +85,12 @@ function EligibilityBadge({
     );
   }
   return (
-    <Badge
-      variant="outline"
-      className="gap-1 border-red-900 bg-red-950/60 text-red-400"
-    >
+    <Badge variant="outline" className="gap-1 border-red-900 bg-red-950/60 text-red-400">
       <AlertTriangle className="h-3 w-3" />
       {label ?? "Retained for History"}
     </Badge>
   );
 }
-
-// ─── Single product card ──────────────────────────────────────────────────────
 
 function ProductCard({ product }: { product: ArchivedProduct }) {
   const [expanded, setExpanded] = useState(false);
@@ -148,11 +133,7 @@ function ProductCard({ product }: { product: ArchivedProduct }) {
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.image}
-              alt={product.name}
-              className="h-full w-full object-cover"
-            />
+            <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
           ) : (
             <Package className="h-6 w-6 text-zinc-600" />
           )}
@@ -173,8 +154,7 @@ function ProductCard({ product }: { product: ArchivedProduct }) {
             {product.variants.length !== 1 ? "s" : ""}
           </p>
           <p className="text-xs text-zinc-600">
-            Archived{" "}
-            {format(new Date(product.updatedAt), "MMM d, yyyy 'at' h:mm a")}
+            Archived {format(new Date(product.updatedAt), "MMM d, yyyy 'at' h:mm a")}
           </p>
         </div>
 
@@ -198,7 +178,7 @@ function ProductCard({ product }: { product: ArchivedProduct }) {
             )}
           </Button>
 
-          {/* Permanent delete — gated by AlertDialog */}
+          {/* Permanent delete */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -223,9 +203,8 @@ function ProductCard({ product }: { product: ArchivedProduct }) {
                 <AlertDialogTitle>Permanently delete product?</AlertDialogTitle>
                 <AlertDialogDescription className="text-zinc-400">
                   This will permanently delete{" "}
-                  <span className="font-medium text-white">{product.name}</span>{" "}
-                  and all its variants. This action{" "}
-                  <span className="text-red-400">cannot be undone</span>.
+                  <span className="font-medium text-white">{product.name}</span> and all its
+                  variants. This action <span className="text-red-400">cannot be undone</span>.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -272,9 +251,7 @@ function ProductCard({ product }: { product: ArchivedProduct }) {
                   {/* Colour swatch placeholder */}
                   <div className="h-2 w-2 shrink-0 rounded-full bg-zinc-600" />
 
-                  <span className="font-mono text-xs text-zinc-400">
-                    {v.sku}
-                  </span>
+                  <span className="font-mono text-xs text-zinc-400">{v.sku}</span>
                   <span className="text-xs text-zinc-500">
                     {v.size}
                     {v.color ? ` · ${v.color}` : ""}
@@ -317,37 +294,28 @@ export function ArchivedClient({ products, variants }: Props) {
 
   const deletable = products.filter((p) => p.canDelete).length;
   const retained = products.length - deletable;
-  const archivedVariantRefs = variants.filter(
-    (variant) => variant._count.orderItems > 0,
-  ).length;
+  const archivedVariantRefs = variants.filter((variant) => variant._count.orderItems > 0).length;
 
   return (
     <div className="space-y-4">
       {/* Summary strip */}
       <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
         <span>
-          <span className="font-medium text-zinc-300">{products.length}</span>{" "}
-          archived product{products.length !== 1 ? "s" : ""}
+          <span className="font-medium text-zinc-300">{products.length}</span> archived product
+          {products.length !== 1 ? "s" : ""}
         </span>
-        {deletable > 0 && (
-          <span className="text-emerald-500">· {deletable} safe to delete</span>
-        )}
+        {deletable > 0 && <span className="text-emerald-500">· {deletable} safe to delete</span>}
         {retained > 0 && (
-          <span className="text-red-400">
-            · {retained} retained for order history
-          </span>
+          <span className="text-red-400">· {retained} retained for order history</span>
         )}
         {variants.length > 0 && (
           <span>
-            ·{" "}
-            <span className="font-medium text-zinc-300">{variants.length}</span>{" "}
-            archived variant{variants.length !== 1 ? "s" : ""}
+            · <span className="font-medium text-zinc-300">{variants.length}</span> archived variant
+            {variants.length !== 1 ? "s" : ""}
           </span>
         )}
         {archivedVariantRefs > 0 && (
-          <span className="text-yellow-400">
-            · {archivedVariantRefs} with order history
-          </span>
+          <span className="text-yellow-400">· {archivedVariantRefs} with order history</span>
         )}
       </div>
 
@@ -371,16 +339,9 @@ export function ArchivedClient({ products, variants }: Props) {
           </div>
           <div className="divide-y divide-zinc-800/60">
             {variants.map((variant) => (
-              <div
-                key={variant.id}
-                className="flex flex-wrap items-center gap-3 px-4 py-3"
-              >
-                <span className="font-mono text-xs text-zinc-400">
-                  {variant.sku}
-                </span>
-                <span className="text-sm text-white">
-                  {variant.product.name}
-                </span>
+              <div key={variant.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <span className="font-mono text-xs text-zinc-400">{variant.sku}</span>
+                <span className="text-sm text-white">{variant.product.name}</span>
                 <span className="text-xs text-zinc-500">
                   {variant.size}
                   {variant.color ? ` · ${variant.color}` : ""}

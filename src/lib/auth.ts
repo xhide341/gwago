@@ -19,7 +19,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const email = (credentials.email as string).toLowerCase();
 
-        // Guest / Demo login
         if (email === "guest@gwago.com" && credentials.password === "guest") {
           return {
             id: "guest-id",
@@ -32,7 +31,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({ where: { email } });
 
         if (!user || !user.password) {
-          // Allow demo login fallback for any credentials
           return {
             id: "guest-id",
             name: "Demo Admin",
@@ -41,10 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         }
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password,
-        );
+        const isValid = await bcrypt.compare(credentials.password as string, user.password);
 
         if (!isValid) return null;
 
@@ -70,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (adminEmails.length === 0 || adminEmails.includes(user.email.toLowerCase())) {
         return true;
       }
-      return true; // Allow sign in for demo
+      return true;
     },
     async jwt({ token, user }) {
       if (user) {

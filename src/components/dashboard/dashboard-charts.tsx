@@ -19,11 +19,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import {
@@ -38,12 +34,7 @@ import {
 } from "@/actions/dashboard";
 import type { DateRange as RDPDateRange } from "react-day-picker";
 
-export type {
-  DailyRevenue,
-  CategoryBreakdown,
-  OrderStatusDist,
-  PaymentMethodDist,
-};
+export type { DailyRevenue, CategoryBreakdown, OrderStatusDist, PaymentMethodDist };
 
 type Props = {
   initialData: ChartData;
@@ -85,10 +76,6 @@ const PAYMENT_COLORS: Record<string, string> = {
   OTHER: "#6b7280",
 };
 
-// Category labels are now stored as plain strings in DB
-// No mapping needed — display as-is
-
-// Custom tooltip for dark theme
 function CustomTooltip({
   active,
   payload,
@@ -105,8 +92,7 @@ function CustomTooltip({
       {payload.map((entry, i: number) => (
         <p key={i} className="text-sm" style={{ color: entry.color }}>
           {entry.name}:{" "}
-          {typeof entry.value === "number" &&
-            entry.name.toLowerCase().includes("revenue")
+          {typeof entry.value === "number" && entry.name.toLowerCase().includes("revenue")
             ? `₱${entry.value.toLocaleString("en-PH", { minimumFractionDigits: 0 })}`
             : entry.value.toLocaleString()}
         </p>
@@ -133,18 +119,9 @@ function PieTooltip({
   );
 }
 
-function OrderStatusPieShape(props: {
-  payload?: { fill?: string };
-  fill?: string;
-}) {
+function OrderStatusPieShape(props: { payload?: { fill?: string }; fill?: string }) {
   const { payload, fill, ...sectorProps } = props;
-  return (
-    <Sector
-      {...sectorProps}
-      fill={fill ?? payload?.fill ?? "#6b7280"}
-      stroke="none"
-    />
-  );
+  return <Sector {...sectorProps} fill={fill ?? payload?.fill ?? "#6b7280"} stroke="none" />;
 }
 
 function CategoryRevenueBarShape(props: {
@@ -168,12 +145,9 @@ function CategoryRevenueBarShape(props: {
   );
 }
 
-// ─── Charts Component ───
 export function DashboardCharts({ initialData }: Props) {
   const [range, setRange] = useState<DateRange>("30d");
-  const [customRange, setCustomRange] = useState<RDPDateRange | undefined>(
-    undefined,
-  );
+  const [customRange, setCustomRange] = useState<RDPDateRange | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [data, setData] = useState<ChartData>(initialData);
   const [isPending, startTransition] = useTransition();
@@ -203,12 +177,7 @@ export function DashboardCharts({ initialData }: Props) {
     });
   }, [range, customRange, initialData]);
 
-  const {
-    dailyRevenue,
-    categoryBreakdown,
-    orderStatusDist,
-    paymentMethodDist,
-  } = data;
+  const { dailyRevenue, categoryBreakdown, orderStatusDist, paymentMethodDist } = data;
 
   const orderStatusData = orderStatusDist.map((entry) => ({
     ...entry,
@@ -227,7 +196,7 @@ export function DashboardCharts({ initialData }: Props) {
       : (DATE_RANGES.find((r) => r.key === range)?.label ?? range);
 
   return (
-    <div className="space-y-4 [&_.recharts-surface]:outline-none [&_.recharts-surface]:ring-0 [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus]:ring-0 [&_.recharts-wrapper]:outline-none [&_.recharts-wrapper]:ring-0 [&_.recharts-wrapper:focus]:outline-none [&_.recharts-wrapper:focus]:ring-0">
+    <div className="space-y-4 [&_.recharts-surface]:ring-0 [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:ring-0 [&_.recharts-surface:focus]:outline-none [&_.recharts-wrapper]:ring-0 [&_.recharts-wrapper]:outline-none [&_.recharts-wrapper:focus]:ring-0 [&_.recharts-wrapper:focus]:outline-none">
       {/* Date Range Filter */}
       <div className="flex flex-wrap items-center gap-2">
         {DATE_RANGES.map((r) => (
@@ -268,10 +237,7 @@ export function DashboardCharts({ initialData }: Props) {
                 : "Custom Range"}
             </Button>
           </PopoverTrigger>
-          <PopoverContent
-            className="w-auto border-zinc-700 bg-zinc-900 p-0"
-            align="start"
-          >
+          <PopoverContent className="w-auto border-zinc-700 bg-zinc-900 p-0" align="start">
             <Calendar
               mode="range"
               selected={customRange}
@@ -289,27 +255,18 @@ export function DashboardCharts({ initialData }: Props) {
           </PopoverContent>
         </Popover>
 
-        {isPending && (
-          <Loader2 className="ml-2 h-4 w-4 animate-spin text-zinc-500" />
-        )}
+        {isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin text-zinc-500" />}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Revenue Trend */}
         <Card className="border-zinc-800 bg-zinc-900/50 md:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base text-white">
-              Revenue & Orders ({rangeLabel})
-            </CardTitle>
+            <CardTitle className="text-base text-white">Revenue & Orders ({rangeLabel})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-75 min-h-75 min-w-0">
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                minWidth={280}
-                minHeight={300}
-              >
+              <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={300}>
                 <BarChart
                   accessibilityLayer={false}
                   data={dailyRevenue}
@@ -336,10 +293,7 @@ export function DashboardCharts({ initialData }: Props) {
                     tickLine={{ stroke: "#3f3f46" }}
                     axisLine={{ stroke: "#3f3f46" }}
                   />
-                  <Tooltip
-                    cursor={{ fill: "transparent" }}
-                    content={<CustomTooltip />}
-                  />
+                  <Tooltip cursor={{ fill: "transparent" }} content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12, color: "#a1a1aa" }} />
                   <Bar
                     yAxisId="revenue"
@@ -369,12 +323,7 @@ export function DashboardCharts({ initialData }: Props) {
           </CardHeader>
           <CardContent>
             <div className="h-62.5 min-h-62.5 min-w-0">
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                minWidth={280}
-                minHeight={250}
-              >
+              <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={250}>
                 <PieChart accessibilityLayer={false}>
                   <Pie
                     data={orderStatusData}
@@ -401,29 +350,18 @@ export function DashboardCharts({ initialData }: Props) {
         {/* Revenue by Category */}
         <Card className="border-zinc-800 bg-zinc-900/50">
           <CardHeader>
-            <CardTitle className="text-base text-white">
-              Revenue by Category
-            </CardTitle>
+            <CardTitle className="text-base text-white">Revenue by Category</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-62.5 min-h-62.5 min-w-0">
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                minWidth={280}
-                minHeight={250}
-              >
+              <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={250}>
                 <BarChart
                   accessibilityLayer={false}
                   data={categoryChartData}
                   layout="vertical"
                   margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
                 >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="#27272a"
-                    horizontal={false}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
                   <XAxis
                     type="number"
                     tick={{ fill: "#71717a", fontSize: 11 }}
@@ -448,8 +386,7 @@ export function DashboardCharts({ initialData }: Props) {
                         <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
                           <p className="text-sm text-white">{d.label}</p>
                           <p className="text-xs text-zinc-400">
-                            ₱{d.revenue.toLocaleString("en-PH")} · {d.count}{" "}
-                            items sold
+                            ₱{d.revenue.toLocaleString("en-PH")} · {d.count} items sold
                           </p>
                         </div>
                       );
@@ -470,9 +407,7 @@ export function DashboardCharts({ initialData }: Props) {
         {/* Payment Methods */}
         <Card className="border-zinc-800 bg-zinc-900/50 md:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base text-white">
-              Payment Methods
-            </CardTitle>
+            <CardTitle className="text-base text-white">Payment Methods</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -481,8 +416,7 @@ export function DashboardCharts({ initialData }: Props) {
                   (s: number, p: PaymentMethodDist) => s + p.amount,
                   0,
                 );
-                const pct =
-                  total > 0 ? ((pm.amount / total) * 100).toFixed(1) : "0";
+                const pct = total > 0 ? ((pm.amount / total) * 100).toFixed(1) : "0";
                 const color = PAYMENT_COLORS[pm.method] || "#6b7280";
                 return (
                   <div
@@ -493,9 +427,7 @@ export function DashboardCharts({ initialData }: Props) {
                       <span className="text-sm font-medium text-zinc-400">
                         {pm.method.replace("_", " ")}
                       </span>
-                      <span className="text-xs text-zinc-600">
-                        {pm.count} txns
-                      </span>
+                      <span className="text-xs text-zinc-600">{pm.count} txns</span>
                     </div>
                     <p className="mt-1 text-lg font-bold text-white">
                       ₱
@@ -509,9 +441,7 @@ export function DashboardCharts({ initialData }: Props) {
                         style={{ width: `${pct}%`, backgroundColor: color }}
                       />
                     </div>
-                    <p className="mt-1 text-right text-xs text-zinc-600">
-                      {pct}%
-                    </p>
+                    <p className="mt-1 text-right text-xs text-zinc-600">{pct}%</p>
                   </div>
                 );
               })}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin, supabaseUrl, supabaseKey } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -9,6 +9,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: "Supabase storage is not configured. Missing URL or Service Key." },
+        { status: 500 },
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -16,7 +23,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
     const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!validTypes.includes(file.type)) {
       return NextResponse.json(
@@ -25,37 +31,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (5MB max)
+    // validate 5mb max
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size: 5MB" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "File too large. Maximum size: 5MB" }, { status: 400 });
     }
 
-    // Generate unique filename
     const ext = file.name.split(".").pop() || "jpg";
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const filePath = `products/${filename}`;
 
-    // Upload to Supabase Storage
+    // upload
     const bytes = await file.arrayBuffer();
-    const { error } = await supabaseAdmin.storage
-      .from("images")
-      .upload(filePath, bytes, {
-        contentType: file.type,
-        upsert: false,
-      });
+    const { error } = await supabaseAdmin.storage.from("images").upload(filePath, bytes, {
+      contentType: file.type,
+      upsert: false,
+    });
 
     if (error) {
       console.error("Supabase upload error:", error);
-      return NextResponse.json(
-        { error: "Upload failed: " + error.message },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "Upload failed: " + error.message }, { status: 500 });
     }
 
-    // Get public URL
     const {
       data: { publicUrl },
     } = supabaseAdmin.storage.from("images").getPublicUrl(filePath);

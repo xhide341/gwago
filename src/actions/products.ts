@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Product, ProductVariantImpact, VariantWithMeta } from "@/lib/mock-store";
+import { Product, ProductVariantImpact } from "@/lib/mock-store";
 import { revalidatePath } from "next/cache";
 import {
   getProductDeleteSummary,
@@ -536,3 +536,4 @@ export async function permanentlyDeleteProduct(id: string): Promise<{
   revalidatePath("/admin");
   return { status: "deleted", message: "Product permanently deleted." };
 }
+

@@ -1,113 +1,193 @@
 import "dotenv/config";
-import { mockStore, Product, Variant, InventoryStock, Order, OrderItem, Transaction, User } from "./mock-store";
+import type { PrismaClient, Prisma } from "../generated/prisma/client";
+import {
+  mockStore,
+  Product,
+  Variant,
+  InventoryStock,
+  Order,
+  OrderItem,
+  Transaction,
+  User,
+  OrderStatus,
+  SalesChannel,
+  TransactionType,
+  PaymentMethod,
+} from "./mock-store";
 
-// Re-export all types/enums from generated client for type safety
-export * from "../generated/client";
+export * from "../generated/prisma/client";
 
-function generateId(prefix: string) {
+function generateId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-// ─── Helpers for enriching records with `include` / `select` ───
-function enrichProduct(p: Product, include?: any) {
-  if (!include) return p;
-  const res: any = { ...p };
+interface ProductInclude {
+  variants?:
+    | boolean
+    | {
+        where?: { isActive?: boolean };
+        orderBy?: { createdAt?: "asc" | "desc" };
+        include?: VariantInclude;
+      };
+  _count?: {
+    select?: { variants?: boolean };
+  };
+}
+
+interface VariantInclude {
+  product?: boolean | { include?: ProductInclude };
+  stock?: boolean;
+  _count?: {
+    select?: { orderItems?: boolean };
+  };
+}
+
+interface StockInclude {
+  variant?: boolean | { include?: VariantInclude };
+}
+
+interface OrderItemInclude {
+  variant?: boolean | { include?: VariantInclude };
+}
+
+interface OrderInclude {
+  items?: boolean | { include?: OrderItemInclude };
+  transactions?: boolean;
+  _count?: {
+    select?: { items?: boolean };
+  };
+}
+
+interface DateFilter {
+  gte?: string | Date;
+  lte?: string | Date;
+  gt?: string | Date;
+  lt?: string | Date;
+}
+
+function enrichProduct(
+  p: Product,
+  include?: ProductInclude | null,
+): Product & Record<string, unknown> {
+  if (!include) return { ...p };
+  const res: Product & Record<string, unknown> = { ...p };
   if (include.variants) {
     let vars = mockStore.variants.filter((v) => v.productId === p.id);
-    if (include.variants.where) {
+    if (typeof include.variants === "object" && include.variants.where) {
       const w = include.variants.where;
       if (w.isActive !== undefined) vars = vars.filter((v) => v.isActive === w.isActive);
     }
-    if (include.variants.orderBy?.createdAt === "asc") {
+    if (typeof include.variants === "object" && include.variants.orderBy?.createdAt === "asc") {
       vars.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     }
-    res.variants = vars.map((v) => enrichVariant(v, include.variants.include));
+    const subInclude = typeof include.variants === "object" ? include.variants.include : undefined;
+    res.variants = vars.map((v) => enrichVariant(v, subInclude));
   }
   if (include._count?.select?.variants) {
-    res._count = res._count || {};
-    res._count.variants = mockStore.variants.filter((v) => v.productId === p.id).length;
+    const counts = (res._count as Record<string, number> | undefined) || {};
+    counts.variants = mockStore.variants.filter((v) => v.productId === p.id).length;
+    res._count = counts;
   }
   return res;
 }
 
-function enrichVariant(v: Variant, include?: any) {
-  if (!include) return v;
-  const res: any = { ...v };
+function enrichVariant(
+  v: Variant,
+  include?: VariantInclude | null,
+): Variant & Record<string, unknown> {
+  if (!include) return { ...v };
+  const res: Variant & Record<string, unknown> = { ...v };
   if (include.product) {
     const prod = mockStore.products.find((p) => p.id === v.productId);
-    res.product = prod ? enrichProduct(prod, include.product.include) : null;
+    const subInclude = typeof include.product === "object" ? include.product.include : undefined;
+    res.product = prod ? enrichProduct(prod, subInclude) : null;
   }
   if (include.stock) {
     res.stock = mockStore.stocks.find((s) => s.variantId === v.id) || null;
   }
   if (include._count?.select?.orderItems) {
-    res._count = res._count || {};
-    res._count.orderItems = mockStore.orderItems.filter((oi) => oi.variantId === v.id).length;
+    const counts = (res._count as Record<string, number> | undefined) || {};
+    counts.orderItems = mockStore.orderItems.filter((oi) => oi.variantId === v.id).length;
+    res._count = counts;
   }
   return res;
 }
 
-function enrichStock(s: InventoryStock, include?: any) {
-  if (!include) return s;
-  const res: any = { ...s };
+function enrichStock(
+  s: InventoryStock,
+  include?: StockInclude | null,
+): InventoryStock & Record<string, unknown> {
+  if (!include) return { ...s };
+  const res: InventoryStock & Record<string, unknown> = { ...s };
   if (include.variant) {
-    const v = mockStore.variants.find((v) => v.id === s.variantId);
-    res.variant = v ? enrichVariant(v, include.variant.include) : null;
+    const v = mockStore.variants.find((item) => item.id === s.variantId);
+    const subInclude = typeof include.variant === "object" ? include.variant.include : undefined;
+    res.variant = v ? enrichVariant(v, subInclude) : null;
   }
   return res;
 }
 
-function enrichOrderItem(oi: OrderItem, include?: any) {
-  if (!include) return oi;
-  const res: any = { ...oi };
+function enrichOrderItem(
+  oi: OrderItem,
+  include?: OrderItemInclude | null,
+): OrderItem & Record<string, unknown> {
+  if (!include) return { ...oi };
+  const res: OrderItem & Record<string, unknown> = { ...oi };
   if (include.variant) {
-    const v = oi.variantId ? mockStore.variants.find((v) => v.id === oi.variantId) : null;
-    res.variant = v ? enrichVariant(v, include.variant.include) : null;
+    const v = oi.variantId ? mockStore.variants.find((item) => item.id === oi.variantId) : null;
+    const subInclude = typeof include.variant === "object" ? include.variant.include : undefined;
+    res.variant = v ? enrichVariant(v, subInclude) : null;
   }
   return res;
 }
 
-function enrichOrder(o: Order, include?: any) {
-  if (!include) return o;
-  const res: any = { ...o };
+function enrichOrder(o: Order, include?: OrderInclude | null): Order & Record<string, unknown> {
+  if (!include) return { ...o };
+  const res: Order & Record<string, unknown> = { ...o };
   if (include.items) {
     const items = mockStore.orderItems.filter((oi) => oi.orderId === o.id);
-    res.items = items.map((oi) => enrichOrderItem(oi, include.items.include));
+    const subInclude = typeof include.items === "object" ? include.items.include : undefined;
+    res.items = items.map((oi) => enrichOrderItem(oi, subInclude));
   }
   if (include.transactions) {
     res.transactions = mockStore.transactions.filter((t) => t.orderId === o.id);
   }
   if (include._count?.select?.items) {
-    res._count = res._count || {};
-    res._count.items = mockStore.orderItems.filter((oi) => oi.orderId === o.id).length;
+    const counts = (res._count as Record<string, number> | undefined) || {};
+    counts.items = mockStore.orderItems.filter((oi) => oi.orderId === o.id).length;
+    res._count = counts;
   }
   return res;
 }
 
-// ─── Filter matching logic ───
-function matchesDate(date: Date, filter: any) {
+// Filter matching logic
+function matchesDate(date: Date, filter?: DateFilter | null): boolean {
   if (!filter) return true;
   if (filter.gte && date < new Date(filter.gte)) return false;
   if (filter.lte && date > new Date(filter.lte)) return false;
+  if (filter.gt && date <= new Date(filter.gt)) return false;
+  if (filter.lt && date >= new Date(filter.lt)) return false;
   return true;
 }
 
-// ─── Mock Prisma Implementation ───
-export const mockPrisma: any = {
+// Mock Prisma Implementation
+export const mockPrisma = {
   product: {
-    async count(args?: any) {
+    async count(args?: Prisma.ProductCountArgs): Promise<number> {
       let list = mockStore.products;
       if (args?.where?.isActive !== undefined) {
-        list = list.filter((p) => p.isActive === args.where.isActive);
+        const active = args.where.isActive;
+        list = list.filter((p) => (typeof active === "boolean" ? p.isActive === active : true));
       }
       return list.length;
     },
-    async findMany(args?: any) {
+    async findMany(args?: Prisma.ProductFindManyArgs) {
       let list = [...mockStore.products];
       if (args?.where?.isActive !== undefined) {
-        list = list.filter((p) => p.isActive === args.where.isActive);
+        const active = args.where.isActive;
+        list = list.filter((p) => (typeof active === "boolean" ? p.isActive === active : true));
       }
-      if (args?.distinct?.includes("category")) {
+      if (args?.distinct && Array.isArray(args.distinct) && args.distinct.includes("category")) {
         const seen = new Set<string>();
         list = list.filter((p) => {
           if (seen.has(p.category)) return false;
@@ -115,33 +195,41 @@ export const mockPrisma: any = {
           return true;
         });
       }
-      if (args?.orderBy?.createdAt === "desc") {
+      const order = args?.orderBy as { createdAt?: string; updatedAt?: string } | undefined;
+      if (order?.createdAt === "desc") {
         list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      } else if (args?.orderBy?.updatedAt === "desc") {
+      } else if (order?.updatedAt === "desc") {
         list.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       }
-      return list.map((p) => enrichProduct(p, args?.include));
+      return list.map((p) => enrichProduct(p, args?.include as ProductInclude));
     },
-    async findUnique(args: any) {
-      const id = args?.where?.id;
+    async findUnique(args: Prisma.ProductFindUniqueArgs) {
+      const id = (args?.where as { id?: string })?.id;
       const p = mockStore.products.find((prod) => prod.id === id);
       if (!p) return null;
       if (args.select) {
-        const sel: any = {};
-        if (args.select.id) sel.id = p.id;
-        if (args.select.name) sel.name = p.name;
-        if (args.select.isActive) sel.isActive = p.isActive;
-        if (args.select.reorderLevel) sel.reorderLevel = p.reorderLevel;
-        if (args.select.basePrice) sel.basePrice = p.basePrice;
-        if (args.select.variants) {
+        const sel: Record<string, unknown> = {};
+        const s = args.select as Record<string, unknown>;
+        if (s.id) sel.id = p.id;
+        if (s.name) sel.name = p.name;
+        if (s.isActive) sel.isActive = p.isActive;
+        if (s.reorderLevel) sel.reorderLevel = p.reorderLevel;
+        if (s.basePrice) sel.basePrice = p.basePrice;
+        if (s.variants) {
+          const varSelect = (s.variants as { select?: Record<string, unknown> })?.select;
           const vars = mockStore.variants.filter((v) => v.productId === p.id);
           sel.variants = vars.map((v) => {
-            const vRes: any = { id: v.id, size: v.size, color: v.color, sku: v.sku };
-            if (args.select.variants.select?.stock) {
-              const st = mockStore.stocks.find((s) => s.variantId === v.id);
+            const vRes: Record<string, unknown> = {
+              id: v.id,
+              size: v.size,
+              color: v.color,
+              sku: v.sku,
+            };
+            if (varSelect?.stock) {
+              const st = mockStore.stocks.find((stock) => stock.variantId === v.id);
               vRes.stock = st ? { quantity: st.quantity } : null;
             }
-            if (args.select.variants.select?._count?.select?.orderItems) {
+            if ((varSelect?._count as { select?: { orderItems?: boolean } })?.select?.orderItems) {
               vRes._count = {
                 orderItems: mockStore.orderItems.filter((oi) => oi.variantId === v.id).length,
               };
@@ -151,10 +239,34 @@ export const mockPrisma: any = {
         }
         return sel;
       }
-      return enrichProduct(p, args?.include);
+      return enrichProduct(p, args?.include as ProductInclude);
     },
-    async create(args: any) {
-      const data = args.data;
+    async create(args: Prisma.ProductCreateArgs) {
+      const data = args.data as {
+        name: string;
+        description?: string | null;
+        category?: string;
+        basePrice: number;
+        reorderLevel?: number;
+        image?: string | null;
+        isActive?: boolean;
+        variants?: {
+          create?: Array<{
+            size: string;
+            color: string;
+            sku: string;
+            image?: string | null;
+            priceAdjustment?: number;
+            stock?: {
+              create?: {
+                quantity?: number;
+                reorderLevel?: number;
+                lastRestocked?: Date | null;
+              };
+            };
+          }>;
+        };
+      };
       const product: Product = {
         id: generateId("prod"),
         name: data.name,
@@ -200,13 +312,13 @@ export const mockPrisma: any = {
           }
         }
       }
-      return enrichProduct(product, args?.include);
+      return enrichProduct(product, args?.include as ProductInclude);
     },
-    async update(args: any) {
-      const id = args.where.id;
+    async update(args: Prisma.ProductUpdateArgs) {
+      const id = (args.where as { id: string }).id;
       const p = mockStore.products.find((prod) => prod.id === id);
       if (!p) throw new Error("Product not found");
-      const d = args.data;
+      const d = args.data as Partial<Product>;
       if (d.name !== undefined) p.name = d.name;
       if (d.description !== undefined) p.description = d.description;
       if (d.category !== undefined) p.category = d.category;
@@ -214,73 +326,88 @@ export const mockPrisma: any = {
       if (d.image !== undefined) p.image = d.image;
       if (d.isActive !== undefined) p.isActive = d.isActive;
       p.updatedAt = new Date();
-      return enrichProduct(p, args?.include);
+      return enrichProduct(p, args?.include as ProductInclude);
     },
-    async delete(args: any) {
-      const id = args.where.id;
+    async delete(args: Prisma.ProductDeleteArgs) {
+      const id = (args.where as { id: string }).id;
       const idx = mockStore.products.findIndex((prod) => prod.id === id);
       if (idx === -1) throw new Error("Product not found");
       const deleted = mockStore.products.splice(idx, 1)[0];
-      // delete linked variants
       const linkedVarIds = mockStore.variants.filter((v) => v.productId === id).map((v) => v.id);
       mockStore.variants = mockStore.variants.filter((v) => v.productId !== id);
       mockStore.stocks = mockStore.stocks.filter((s) => !linkedVarIds.includes(s.variantId));
       return deleted;
     },
-    async deleteMany() {
+    async deleteMany(): Promise<{ count: number }> {
       mockStore.products = [];
       return { count: 0 };
     },
   },
 
   variant: {
-    async findMany(args?: any) {
+    async findMany(args?: Prisma.VariantFindManyArgs) {
       let list = [...mockStore.variants];
       if (args?.where) {
-        const w = args.where;
+        const w = args.where as {
+          isActive?: boolean;
+          productId?: string;
+          product?: { isActive?: boolean };
+          id?: { in?: string[] };
+        };
         if (w.isActive !== undefined) list = list.filter((v) => v.isActive === w.isActive);
         if (w.productId) list = list.filter((v) => v.productId === w.productId);
         if (w.product?.isActive !== undefined) {
           list = list.filter((v) => {
             const p = mockStore.products.find((prod) => prod.id === v.productId);
-            return p && p.isActive === w.product.isActive;
+            return p && p.isActive === w.product?.isActive;
           });
         }
         if (w.id?.in) {
-          list = list.filter((v) => w.id.in.includes(v.id));
+          const inList = w.id.in;
+          list = list.filter((v) => inList.includes(v.id));
         }
       }
       if (Array.isArray(args?.orderBy)) {
+        const orders = args.orderBy as Array<{ archivedAt?: string; updatedAt?: string }>;
         list.sort((a, b) => {
-          for (const orderItem of args.orderBy) {
+          for (const orderItem of orders) {
             if (orderItem.archivedAt === "desc") {
               const tA = a.archivedAt ? a.archivedAt.getTime() : 0;
               const tB = b.archivedAt ? b.archivedAt.getTime() : 0;
               if (tA !== tB) return tB - tA;
             }
             if (orderItem.updatedAt === "desc") {
-              if (a.updatedAt.getTime() !== b.updatedAt.getTime()) return b.updatedAt.getTime() - a.updatedAt.getTime();
+              if (a.updatedAt.getTime() !== b.updatedAt.getTime())
+                return b.updatedAt.getTime() - a.updatedAt.getTime();
             }
           }
           return 0;
         });
       }
-      return list.map((v) => enrichVariant(v, args?.include));
+      return list.map((v) => enrichVariant(v, args?.include as VariantInclude));
     },
-    async findUnique(args: any) {
-      const id = args?.where?.id;
+    async findUnique(args: Prisma.VariantFindUniqueArgs) {
+      const id = (args?.where as { id?: string })?.id;
       const v = mockStore.variants.find((varItem) => varItem.id === id);
       if (!v) return null;
       if (args.select) {
-        const sel: any = {};
-        if (args.select.id) sel.id = v.id;
-        if (args.select.productId) sel.productId = v.productId;
+        const sel: Record<string, unknown> = {};
+        const s = args.select as Record<string, unknown>;
+        if (s.id) sel.id = v.id;
+        if (s.productId) sel.productId = v.productId;
         return sel;
       }
-      return enrichVariant(v, args?.include);
+      return enrichVariant(v, args?.include as VariantInclude);
     },
-    async create(args: any) {
-      const d = args.data;
+    async create(args: Prisma.VariantCreateArgs) {
+      const d = args.data as {
+        productId: string;
+        size: string;
+        color: string;
+        sku: string;
+        image?: string | null;
+        priceAdjustment?: number;
+      };
       const variant: Variant = {
         id: generateId("var"),
         productId: d.productId,
@@ -295,13 +422,13 @@ export const mockPrisma: any = {
         updatedAt: new Date(),
       };
       mockStore.variants.push(variant);
-      return enrichVariant(variant, args?.include);
+      return enrichVariant(variant, args?.include as VariantInclude);
     },
-    async update(args: any) {
-      const id = args.where.id;
+    async update(args: Prisma.VariantUpdateArgs) {
+      const id = (args.where as { id: string }).id;
       const v = mockStore.variants.find((varItem) => varItem.id === id);
       if (!v) throw new Error("Variant not found");
-      const d = args.data;
+      const d = args.data as Partial<Variant>;
       if (d.size !== undefined) v.size = d.size;
       if (d.color !== undefined) v.color = d.color;
       if (d.sku !== undefined) v.sku = d.sku;
@@ -310,10 +437,11 @@ export const mockPrisma: any = {
       if (d.isActive !== undefined) v.isActive = d.isActive;
       if (d.archivedAt !== undefined) v.archivedAt = d.archivedAt;
       v.updatedAt = new Date();
-      return enrichVariant(v, args?.include);
+      return enrichVariant(v, args?.include as VariantInclude);
     },
-    async updateMany(args: any) {
-      const { where, data } = args;
+    async updateMany(args: Prisma.VariantUpdateManyArgs): Promise<{ count: number }> {
+      const where = args.where as { productId?: string; archivedAt?: Date | null } | undefined;
+      const data = args.data as Partial<Variant>;
       let matches = mockStore.variants;
       if (where?.productId) matches = matches.filter((v) => v.productId === where.productId);
       if (where?.archivedAt === null) matches = matches.filter((v) => v.archivedAt === null);
@@ -327,40 +455,45 @@ export const mockPrisma: any = {
       }
       return { count };
     },
-    async delete(args: any) {
-      const id = args.where.id;
+    async delete(args: Prisma.VariantDeleteArgs): Promise<Variant> {
+      const id = (args.where as { id: string }).id;
       const idx = mockStore.variants.findIndex((v) => v.id === id);
       if (idx === -1) throw new Error("Variant not found");
       const deleted = mockStore.variants.splice(idx, 1)[0];
       mockStore.stocks = mockStore.stocks.filter((s) => s.variantId !== id);
       return deleted;
     },
-    async deleteMany() {
+    async deleteMany(): Promise<{ count: number }> {
       mockStore.variants = [];
       return { count: 0 };
     },
   },
 
   inventoryStock: {
-    async count(args?: any) {
+    async count(args?: Prisma.InventoryStockCountArgs): Promise<number> {
       return mockStore.stocks.length;
     },
-    async findMany(args?: any) {
+    async findMany(args?: Prisma.InventoryStockFindManyArgs) {
       let list = [...mockStore.stocks];
-      if (args?.where?.variant) {
-        const vw = args.where.variant;
-        list = list.filter((s) => {
-          const v = mockStore.variants.find((v) => v.id === s.variantId);
-          if (!v) return false;
-          if (vw.isActive !== undefined && v.isActive !== vw.isActive) return false;
-          if (vw.product?.isActive !== undefined) {
-            const p = mockStore.products.find((p) => p.id === v.productId);
-            if (!p || p.isActive !== vw.product.isActive) return false;
-          }
-          return true;
-        });
+      if (args?.where) {
+        const vw = (
+          args.where as { variant?: { isActive?: boolean; product?: { isActive?: boolean } } }
+        )?.variant;
+        if (vw) {
+          list = list.filter((s) => {
+            const v = mockStore.variants.find((item) => item.id === s.variantId);
+            if (!v) return false;
+            if (vw.isActive !== undefined && v.isActive !== vw.isActive) return false;
+            if (vw.product?.isActive !== undefined) {
+              const p = mockStore.products.find((prod) => prod.id === v.productId);
+              if (!p || p.isActive !== vw.product.isActive) return false;
+            }
+            return true;
+          });
+        }
       }
-      if (args?.orderBy?.variant?.product?.name === "asc") {
+      const order = args?.orderBy as { variant?: { product?: { name?: string } } } | undefined;
+      if (order?.variant?.product?.name === "asc") {
         list.sort((a, b) => {
           const vA = mockStore.variants.find((v) => v.id === a.variantId);
           const vB = mockStore.variants.find((v) => v.id === b.variantId);
@@ -372,16 +505,21 @@ export const mockPrisma: any = {
       if (args?.select) {
         return list.map((s) => ({ quantity: s.quantity, reorderLevel: s.reorderLevel }));
       }
-      return list.map((s) => enrichStock(s, args?.include));
+      return list.map((s) => enrichStock(s, args?.include as StockInclude));
     },
-    async findUnique(args: any) {
-      const vId = args?.where?.variantId;
+    async findUnique(args: Prisma.InventoryStockFindUniqueArgs) {
+      const vId = (args?.where as { variantId?: string })?.variantId;
       const s = mockStore.stocks.find((stock) => stock.variantId === vId);
       if (!s) return null;
-      return enrichStock(s, args?.include);
+      return enrichStock(s, args?.include as StockInclude);
     },
-    async create(args: any) {
-      const d = args.data;
+    async create(args: Prisma.InventoryStockCreateArgs) {
+      const d = args.data as {
+        variantId: string;
+        quantity?: number;
+        reorderLevel?: number;
+        lastRestocked?: Date | null;
+      };
       const stock: InventoryStock = {
         id: generateId("stock"),
         variantId: d.variantId,
@@ -392,20 +530,21 @@ export const mockPrisma: any = {
         updatedAt: new Date(),
       };
       mockStore.stocks.push(stock);
-      return enrichStock(stock, args?.include);
+      return enrichStock(stock, args?.include as StockInclude);
     },
-    async update(args: any) {
-      const vId = args.where.variantId;
+    async update(args: Prisma.InventoryStockUpdateArgs) {
+      const vId = (args.where as { variantId: string }).variantId;
       const s = mockStore.stocks.find((stock) => stock.variantId === vId);
       if (!s) throw new Error("Stock not found");
-      const d = args.data;
+      const d = args.data as Partial<InventoryStock>;
       if (d.quantity !== undefined) s.quantity = d.quantity;
       if (d.lastRestocked !== undefined) s.lastRestocked = d.lastRestocked;
       s.updatedAt = new Date();
-      return enrichStock(s, args?.include);
+      return enrichStock(s, args?.include as StockInclude);
     },
-    async updateMany(args: any) {
-      const { where, data } = args;
+    async updateMany(args: Prisma.InventoryStockUpdateManyArgs): Promise<{ count: number }> {
+      const where = args.where as { variantId?: string; quantity?: { gte?: number } } | undefined;
+      const data = args.data as { quantity?: { decrement?: number; increment?: number } };
       const vId = where?.variantId;
       const stock = mockStore.stocks.find((s) => s.variantId === vId);
       if (!stock) return { count: 0 };
@@ -423,22 +562,35 @@ export const mockPrisma: any = {
       stock.updatedAt = new Date();
       return { count: 1 };
     },
-    async deleteMany() {
+    async deleteMany(): Promise<{ count: number }> {
       mockStore.stocks = [];
       return { count: 0 };
     },
   },
 
   order: {
-    async count(args?: any) {
+    async count(args?: Prisma.OrderCountArgs): Promise<number> {
       let list = mockStore.orders;
       if (args?.where) {
-        const w = args.where;
+        const w = args.where as {
+          status?: string | { in?: string[] };
+          items?: {
+            some?: {
+              variantId?: string;
+              productIdSnapshot?: string;
+              OR?: Array<{
+                productIdSnapshot?: string;
+                variant?: { is?: { productId?: string } };
+              }>;
+            };
+          };
+        };
         if (w.status) {
           if (typeof w.status === "string") {
             list = list.filter((o) => o.status === w.status);
           } else if (w.status.in) {
-            list = list.filter((o) => w.status.in.includes(o.status));
+            const inList = w.status.in;
+            list = list.filter((o) => inList.includes(o.status));
           }
         }
         if (w.items?.some) {
@@ -447,12 +599,19 @@ export const mockPrisma: any = {
             const items = mockStore.orderItems.filter((oi) => oi.orderId === o.id);
             return items.some((oi) => {
               if (itemWhere.variantId && oi.variantId !== itemWhere.variantId) return false;
-              if (itemWhere.productIdSnapshot && oi.productIdSnapshot !== itemWhere.productIdSnapshot) return false;
+              if (
+                itemWhere.productIdSnapshot &&
+                oi.productIdSnapshot !== itemWhere.productIdSnapshot
+              )
+                return false;
               if (itemWhere.OR) {
-                const orMatch = itemWhere.OR.some((cond: any) => {
-                  if (cond.productIdSnapshot && oi.productIdSnapshot === cond.productIdSnapshot) return true;
+                const orMatch = itemWhere.OR.some((cond) => {
+                  if (cond.productIdSnapshot && oi.productIdSnapshot === cond.productIdSnapshot)
+                    return true;
                   if (cond.variant?.is?.productId) {
-                    const v = oi.variantId ? mockStore.variants.find((varItem) => varItem.id === oi.variantId) : null;
+                    const v = oi.variantId
+                      ? mockStore.variants.find((varItem) => varItem.id === oi.variantId)
+                      : null;
                     return v?.productId === cond.variant.is.productId;
                   }
                   return false;
@@ -466,30 +625,67 @@ export const mockPrisma: any = {
       }
       return list.length;
     },
-    async findMany(args?: any) {
+    async findMany(args?: Prisma.OrderFindManyArgs) {
       let list = [...mockStore.orders];
       if (args?.where) {
-        const w = args.where;
+        const w = args.where as { createdAt?: DateFilter };
         if (w.createdAt) {
           list = list.filter((o) => matchesDate(o.createdAt, w.createdAt));
         }
       }
-      if (args?.orderBy?.createdAt === "desc") {
+      const order = args?.orderBy as { createdAt?: string } | undefined;
+      if (order?.createdAt === "desc") {
         list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       }
       if (args?.take) {
         list = list.slice(0, args.take);
       }
-      return list.map((o) => enrichOrder(o, args?.include));
+      return list.map((o) => enrichOrder(o, args?.include as OrderInclude));
     },
-    async findUnique(args: any) {
-      const id = args?.where?.id;
+    async findUnique(args: Prisma.OrderFindUniqueArgs) {
+      const id = (args?.where as { id?: string })?.id;
       const o = mockStore.orders.find((ord) => ord.id === id);
       if (!o) return null;
-      return enrichOrder(o, args?.include);
+      return enrichOrder(o, args?.include as OrderInclude);
     },
-    async create(args: any) {
-      const d = args.data;
+    async create(args: Prisma.OrderCreateArgs) {
+      const d = args.data as {
+        customerName: string;
+        customerEmail?: string | null;
+        customerPhone?: string | null;
+        status?: OrderStatus;
+        salesChannel?: SalesChannel;
+        channelFee?: number;
+        totalAmount: number;
+        netAmount?: number;
+        notes?: string | null;
+        createdAt?: Date | string;
+        updatedAt?: Date | string;
+        items?: {
+          create?: Array<{
+            productIdSnapshot?: string | null;
+            productNameSnapshot?: string | null;
+            variantId?: string | null;
+            quantity: number;
+            unitPrice: number;
+            adjustedPrice?: number | null;
+            subtotal: number;
+            variantName?: string | null;
+            variantSku?: string | null;
+            variantSize?: string | null;
+            variantColor?: string | null;
+            createdAt?: Date | string;
+          }>;
+        };
+        transactions?: {
+          create?: {
+            amount: number;
+            type?: TransactionType;
+            method?: PaymentMethod;
+            reference?: string | null;
+          };
+        };
+      };
       const order: Order = {
         id: generateId("ord"),
         customerName: d.customerName,
@@ -542,13 +738,29 @@ export const mockPrisma: any = {
         mockStore.transactions.push(tx);
       }
 
-      return enrichOrder(order, args?.include);
+      return enrichOrder(order, args?.include as OrderInclude);
     },
-    async update(args: any) {
-      const id = args.where.id;
+    async update(args: Prisma.OrderUpdateArgs) {
+      const id = (args.where as { id: string }).id;
       const o = mockStore.orders.find((ord) => ord.id === id);
       if (!o) throw new Error("Order not found");
-      const d = args.data;
+      const d = args.data as Partial<Order> & {
+        items?: {
+          create?: Array<{
+            productIdSnapshot?: string | null;
+            productNameSnapshot?: string | null;
+            variantId?: string | null;
+            quantity: number;
+            unitPrice: number;
+            adjustedPrice?: number | null;
+            subtotal: number;
+            variantName?: string | null;
+            variantSku?: string | null;
+            variantSize?: string | null;
+            variantColor?: string | null;
+          }>;
+        };
+      };
       if (d.customerName !== undefined) o.customerName = d.customerName;
       if (d.customerEmail !== undefined) o.customerEmail = d.customerEmail;
       if (d.customerPhone !== undefined) o.customerPhone = d.customerPhone;
@@ -582,10 +794,10 @@ export const mockPrisma: any = {
         }
       }
 
-      return enrichOrder(o, args?.include);
+      return enrichOrder(o, args?.include as OrderInclude);
     },
-    async delete(args: any) {
-      const id = args.where.id;
+    async delete(args: Prisma.OrderDeleteArgs) {
+      const id = (args.where as { id: string }).id;
       const idx = mockStore.orders.findIndex((o) => o.id === id);
       if (idx === -1) throw new Error("Order not found");
       const deleted = mockStore.orders.splice(idx, 1)[0];
@@ -593,14 +805,15 @@ export const mockPrisma: any = {
       mockStore.transactions = mockStore.transactions.filter((t) => t.orderId !== id);
       return deleted;
     },
-    async deleteMany() {
+    async deleteMany(): Promise<{ count: number }> {
       mockStore.orders = [];
       return { count: 0 };
     },
-    async groupBy(args: any) {
+    async groupBy(args: Prisma.OrderGroupByArgs) {
       let list = mockStore.orders;
-      if (args?.where?.createdAt) {
-        list = list.filter((o) => matchesDate(o.createdAt, args.where.createdAt));
+      const w = args?.where as { createdAt?: DateFilter } | undefined;
+      if (w?.createdAt) {
+        list = list.filter((o) => matchesDate(o.createdAt, w.createdAt));
       }
       const counts = new Map<string, number>();
       for (const o of list) {
@@ -614,17 +827,30 @@ export const mockPrisma: any = {
   },
 
   orderItem: {
-    async count(args?: any) {
+    async count(args?: Prisma.OrderItemCountArgs): Promise<number> {
       let list = mockStore.orderItems;
-      if (args?.where?.variantId) {
-        list = list.filter((oi) => oi.variantId === args.where.variantId);
+      const w = args?.where as
+        | {
+            variantId?: string;
+            OR?: Array<{
+              productIdSnapshot?: string;
+              variant?: { is?: { productId?: string } };
+            }>;
+          }
+        | undefined;
+      if (w?.variantId) {
+        list = list.filter((oi) => oi.variantId === w.variantId);
       }
-      if (args?.where?.OR) {
+      if (w?.OR) {
+        const orConditions = w.OR;
         list = list.filter((oi) => {
-          return args.where.OR.some((cond: any) => {
-            if (cond.productIdSnapshot && oi.productIdSnapshot === cond.productIdSnapshot) return true;
+          return orConditions.some((cond) => {
+            if (cond.productIdSnapshot && oi.productIdSnapshot === cond.productIdSnapshot)
+              return true;
             if (cond.variant?.is?.productId) {
-              const v = oi.variantId ? mockStore.variants.find((varItem) => varItem.id === oi.variantId) : null;
+              const v = oi.variantId
+                ? mockStore.variants.find((varItem) => varItem.id === oi.variantId)
+                : null;
               return v?.productId === cond.variant.is.productId;
             }
             return false;
@@ -633,10 +859,12 @@ export const mockPrisma: any = {
       }
       return list.length;
     },
-    async findMany(args?: any) {
+    async findMany(args?: Prisma.OrderItemFindManyArgs) {
       let list = [...mockStore.orderItems];
-      if (args?.where?.order) {
-        const ow = args.where.order;
+      const w = args?.where as
+        { order?: { status?: { not?: string }; createdAt?: DateFilter } } | undefined;
+      if (w?.order) {
+        const ow = w.order;
         list = list.filter((oi) => {
           const o = mockStore.orders.find((ord) => ord.id === oi.orderId);
           if (!o) return false;
@@ -645,10 +873,10 @@ export const mockPrisma: any = {
           return true;
         });
       }
-      return list.map((oi) => enrichOrderItem(oi, args?.include));
+      return list.map((oi) => enrichOrderItem(oi, args?.include as OrderItemInclude));
     },
-    async deleteMany(args: any) {
-      const oId = args?.where?.orderId;
+    async deleteMany(args?: Prisma.OrderItemDeleteManyArgs): Promise<{ count: number }> {
+      const oId = (args?.where as { orderId?: string } | undefined)?.orderId;
       if (oId) {
         const initial = mockStore.orderItems.length;
         mockStore.orderItems = mockStore.orderItems.filter((oi) => oi.orderId !== oId);
@@ -657,33 +885,41 @@ export const mockPrisma: any = {
       mockStore.orderItems = [];
       return { count: 0 };
     },
-    async updateMany() {
+    async updateMany(): Promise<{ count: number }> {
       return { count: 0 };
     },
   },
 
   transaction: {
-    async findFirst(args?: any) {
-      const ref = args?.where?.reference?.equals;
+    async findFirst(args?: Prisma.TransactionFindFirstArgs) {
+      const ref = (args?.where as { reference?: { equals?: string } } | undefined)?.reference
+        ?.equals;
       if (!ref) return null;
       const t = mockStore.transactions.find(
-        (tx) => tx.reference?.toLowerCase() === ref.toLowerCase()
+        (tx) => tx.reference?.toLowerCase() === ref.toLowerCase(),
       );
       if (!t) return null;
-      if (args.select) return { id: t.id };
+      if (args?.select) return { id: t.id };
       return t;
     },
-    async findMany(args?: any) {
+    async findMany(args?: Prisma.TransactionFindManyArgs) {
       let list = [...mockStore.transactions];
-      if (args?.where) {
-        const w = args.where;
+      const w = args?.where as { type?: TransactionType; createdAt?: DateFilter } | undefined;
+      if (w) {
         if (w.type) list = list.filter((t) => t.type === w.type);
         if (w.createdAt) list = list.filter((t) => matchesDate(t.createdAt, w.createdAt));
       }
       return list;
     },
-    async create(args: any) {
-      const d = args.data;
+    async create(args: Prisma.TransactionCreateArgs) {
+      const d = args.data as {
+        orderId: string;
+        amount: number;
+        type?: TransactionType;
+        method?: PaymentMethod;
+        reference?: string | null;
+        createdAt?: Date | string;
+      };
       const tx: Transaction = {
         id: generateId("tx"),
         orderId: d.orderId,
@@ -696,33 +932,33 @@ export const mockPrisma: any = {
       mockStore.transactions.push(tx);
       return tx;
     },
-    async update(args: any) {
-      const id = args.where.id;
+    async update(args: Prisma.TransactionUpdateArgs) {
+      const id = (args.where as { id: string }).id;
       const t = mockStore.transactions.find((tx) => tx.id === id);
       if (!t) throw new Error("Transaction not found");
-      const d = args.data;
+      const d = args.data as Partial<Transaction>;
       if (d.method !== undefined) t.method = d.method;
       if (d.reference !== undefined) t.reference = d.reference;
       return t;
     },
-    async deleteMany() {
+    async deleteMany(): Promise<{ count: number }> {
       mockStore.transactions = [];
       return { count: 0 };
     },
-    async aggregate(args?: any) {
+    async aggregate(args?: Prisma.TransactionAggregateArgs) {
       let list = mockStore.transactions;
-      if (args?.where) {
-        const w = args.where;
+      const w = args?.where as { type?: TransactionType; createdAt?: DateFilter } | undefined;
+      if (w) {
         if (w.type) list = list.filter((t) => t.type === w.type);
         if (w.createdAt) list = list.filter((t) => matchesDate(t.createdAt, w.createdAt));
       }
       const sum = list.reduce((acc, t) => acc + t.amount, 0);
       return { _sum: { amount: sum } };
     },
-    async groupBy(args: any) {
+    async groupBy(args: Prisma.TransactionGroupByArgs) {
       let list = mockStore.transactions;
-      if (args?.where) {
-        const w = args.where;
+      const w = args?.where as { type?: TransactionType; createdAt?: DateFilter } | undefined;
+      if (w) {
         if (w.type) list = list.filter((t) => t.type === w.type);
         if (w.createdAt) list = list.filter((t) => matchesDate(t.createdAt, w.createdAt));
       }
@@ -742,23 +978,23 @@ export const mockPrisma: any = {
   },
 
   user: {
-    async findUnique(args: any) {
-      const email = args?.where?.email;
+    async findUnique(args: Prisma.UserFindUniqueArgs): Promise<User | null> {
+      const email = (args?.where as { email?: string })?.email;
       if (!email) return null;
       return mockStore.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
     },
-    async deleteMany() {
+    async deleteMany(): Promise<{ count: number }> {
       mockStore.users = [];
       return { count: 0 };
     },
   },
 
-  async $transaction(fn: any) {
+  async $transaction<T>(fn: ((tx: PrismaClient) => Promise<T>) | Promise<T>[]): Promise<T | T[]> {
     if (typeof fn === "function") {
-      return fn(mockPrisma);
+      return fn(mockPrisma as unknown as PrismaClient);
     }
     return Promise.all(fn);
   },
 };
 
-export const prisma = mockPrisma;
+export const prisma: PrismaClient = mockPrisma as unknown as PrismaClient;

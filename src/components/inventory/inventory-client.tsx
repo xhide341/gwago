@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import {
-  updateVariantFromInventory,
-  deleteVariantFromInventory,
-} from "@/actions/inventory";
+import { updateVariantFromInventory, deleteVariantFromInventory } from "@/actions/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,17 +56,7 @@ type InventoryItem = {
   };
 };
 
-const INVENTORY_SIZE_OPTIONS = [
-  "XS",
-  "S",
-  "M",
-  "L",
-  "XL",
-  "2XL",
-  "3XL",
-  "4XL",
-  "5XL",
-] as const;
+const INVENTORY_SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const;
 
 export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
   const [search, setSearch] = useState("");
@@ -78,9 +65,7 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   // Extract unique categories from inventory
-  const categories = Array.from(
-    new Set(inventory.map((i) => i.variant.product.category)),
-  ).sort();
+  const categories = Array.from(new Set(inventory.map((i) => i.variant.product.category))).sort();
 
   // Filter inventory by search, stock status, and category
   const filtered = inventory.filter((item) => {
@@ -90,13 +75,11 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
       item.variant.color.toLowerCase().includes(search.toLowerCase());
 
     const matchCategory =
-      categoryFilter === "all" ||
-      item.variant.product.category === categoryFilter;
+      categoryFilter === "all" || item.variant.product.category === categoryFilter;
 
     if (!matchSearch || !matchCategory) return false;
 
-    if (filter === "low")
-      return item.quantity <= item.reorderLevel && item.quantity > 0;
+    if (filter === "low") return item.quantity <= item.reorderLevel && item.quantity > 0;
     if (filter === "out") return item.quantity === 0;
     return true;
   });
@@ -114,9 +97,7 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
           {outOfStockCount > 0 && (
             <button
               type="button"
-              onClick={() =>
-                setFilter((current) => (current === "out" ? "all" : "out"))
-              }
+              onClick={() => setFilter((current) => (current === "out" ? "all" : "out"))}
               className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-red-400 transition-colors ${
                 filter === "out"
                   ? "border-red-500/40 bg-red-500/15"
@@ -132,9 +113,7 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
           {lowStockCount > 0 && (
             <button
               type="button"
-              onClick={() =>
-                setFilter((current) => (current === "low" ? "all" : "low"))
-              }
+              onClick={() => setFilter((current) => (current === "low" ? "all" : "low"))}
               className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-yellow-400 transition-colors ${
                 filter === "low"
                   ? "border-yellow-500/40 bg-yellow-500/15"
@@ -153,7 +132,7 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative w-full max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white" />
           <Input
             placeholder="Search by product, SKU, or color..."
             value={search}
@@ -162,10 +141,7 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
           />
         </div>
         {/* Stock status filter */}
-        <Select
-          value={filter}
-          onValueChange={(v) => setFilter(v as "all" | "low" | "out")}
-        >
+        <Select value={filter} onValueChange={(v) => setFilter(v as "all" | "low" | "out")}>
           <SelectTrigger className="w-40 border-zinc-800 bg-zinc-900 text-white">
             <SelectValue />
           </SelectTrigger>
@@ -198,9 +174,7 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
             size="sm"
             onClick={() => setView("table")}
             className={`rounded-r-none ${
-              view === "table"
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-500 hover:text-white"
+              view === "table" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-white"
             }`}
           >
             <List className="h-4 w-4" />
@@ -210,9 +184,7 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
             size="sm"
             onClick={() => setView("grid")}
             className={`rounded-l-none ${
-              view === "grid"
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-500 hover:text-white"
+              view === "grid" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-white"
             }`}
           >
             <LayoutGrid className="h-4 w-4" />
@@ -236,14 +208,8 @@ export function InventoryClient({ inventory }: { inventory: InventoryItem[] }) {
   );
 }
 
-// ─── Variant Image (falls back to product image) ───
-function VariantImage({
-  item,
-  size = "sm",
-}: {
-  item: InventoryItem;
-  size?: "sm" | "lg";
-}) {
+// Variant Image (falls back to product image)
+function VariantImage({ item, size = "sm" }: { item: InventoryItem; size?: "sm" | "lg" }) {
   const src = item.variant.image || item.variant.product.image;
   const dim = size === "sm" ? "h-10 w-10" : "h-20 w-20";
 
@@ -258,9 +224,7 @@ function VariantImage({
   }
 
   return (
-    <div
-      className={`${dim} relative shrink-0 overflow-hidden rounded-md border border-zinc-800`}
-    >
+    <div className={`${dim} relative shrink-0 overflow-hidden rounded-md border border-zinc-800`}>
       <Image
         src={src}
         alt={`${item.variant.product.name} - ${item.variant.color}`}
@@ -272,7 +236,7 @@ function VariantImage({
   );
 }
 
-// ─── Table View ───
+// Table View
 function TableView({ items }: { items: InventoryItem[] }) {
   return (
     <Card className="border-zinc-800 bg-zinc-900/50">
@@ -301,24 +265,15 @@ function TableView({ items }: { items: InventoryItem[] }) {
                   <td className="py-3">
                     <div className="flex items-center gap-3">
                       <VariantImage item={item} size="sm" />
-                      <span className="text-white">
-                        {item.variant.product.name}
-                      </span>
+                      <span className="text-white">{item.variant.product.name}</span>
                     </div>
                   </td>
-                  <td className="py-3 font-mono text-xs text-zinc-400">
-                    {item.variant.sku}
-                  </td>
+                  <td className="py-3 font-mono text-xs text-zinc-400">{item.variant.sku}</td>
                   <td className="py-3 text-zinc-300">{item.variant.size}</td>
                   <td className="py-3 text-zinc-300">{item.variant.color}</td>
-                  <td className="py-3 font-medium text-white">
-                    {item.quantity}
-                  </td>
+                  <td className="py-3 font-medium text-white">{item.quantity}</td>
                   <td className="py-3">
-                    <StockStatusBadge
-                      quantity={item.quantity}
-                      reorderLevel={item.reorderLevel}
-                    />
+                    <StockStatusBadge quantity={item.quantity} reorderLevel={item.reorderLevel} />
                   </td>
                   <td className="py-3">
                     <div className="flex items-center gap-1">
@@ -336,7 +291,7 @@ function TableView({ items }: { items: InventoryItem[] }) {
   );
 }
 
-// ─── Grid / Bento View ───
+// Grid / Bento View
 function GridView({ items }: { items: InventoryItem[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -345,7 +300,6 @@ function GridView({ items }: { items: InventoryItem[] }) {
         const isLow = item.quantity <= item.reorderLevel && item.quantity > 0;
         const isOut = item.quantity === 0;
 
-        // Border color based on stock status
         const borderColor = isOut
           ? "border-red-500/30"
           : isLow
@@ -372,15 +326,10 @@ function GridView({ items }: { items: InventoryItem[] }) {
                   <Package className="h-12 w-12" />
                 </div>
               )}
-              {/* Status badge overlay */}
-              <div className="absolute left-2 top-2">
-                <StockStatusBadge
-                  quantity={item.quantity}
-                  reorderLevel={item.reorderLevel}
-                />
+              <div className="absolute top-2 left-2">
+                <StockStatusBadge quantity={item.quantity} reorderLevel={item.reorderLevel} />
               </div>
-              {/* Quantity overlay */}
-              <div className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-bold text-white backdrop-blur-sm">
+              <div className="absolute top-2 right-2 rounded-md bg-black/70 px-2 py-1 text-xs font-bold text-white backdrop-blur-sm">
                 Qty: {item.quantity}
               </div>
             </div>
@@ -391,15 +340,10 @@ function GridView({ items }: { items: InventoryItem[] }) {
                 <h3 className="truncate text-sm font-medium text-white">
                   {item.variant.product.name}
                 </h3>
-                <p className="truncate font-mono text-xs text-zinc-500">
-                  {item.variant.sku}
-                </p>
+                <p className="truncate font-mono text-xs text-zinc-500">{item.variant.sku}</p>
               </div>
               <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <Badge
-                  variant="outline"
-                  className="border-zinc-700 text-zinc-400"
-                >
+                <Badge variant="outline" className="border-zinc-700 text-zinc-400">
                   {item.variant.size}
                 </Badge>
                 <span className="flex items-center gap-1">
@@ -413,9 +357,7 @@ function GridView({ items }: { items: InventoryItem[] }) {
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1">
-                <span className="text-xs text-zinc-500">
-                  Reorder at {item.reorderLevel}
-                </span>
+                <span className="text-xs text-zinc-500">Reorder at {item.reorderLevel}</span>
                 <div className="flex items-center gap-1">
                   <EditVariantDialog item={item} />
                   <DeleteVariantButton item={item} />
@@ -429,7 +371,6 @@ function GridView({ items }: { items: InventoryItem[] }) {
   );
 }
 
-// Simple color name to hex mapping for the color dot
 function getColorHex(colorName: string): string {
   const map: Record<string, string> = {
     black: "#1a1a1a",
@@ -450,45 +391,28 @@ function getColorHex(colorName: string): string {
   return map[colorName.toLowerCase()] || "#6b7280";
 }
 
-// ─── Stock Status Badge ───
-function StockStatusBadge({
-  quantity,
-  reorderLevel,
-}: {
-  quantity: number;
-  reorderLevel: number;
-}) {
+function StockStatusBadge({ quantity, reorderLevel }: { quantity: number; reorderLevel: number }) {
   if (quantity === 0) {
     return (
-      <Badge
-        variant="outline"
-        className="border-red-500/20 bg-red-500/10 text-red-500"
-      >
+      <Badge variant="outline" className="border-red-500/20 bg-red-500/10 text-red-500">
         Out of Stock
       </Badge>
     );
   }
   if (quantity <= reorderLevel) {
     return (
-      <Badge
-        variant="outline"
-        className="border-yellow-500/20 bg-yellow-500/10 text-yellow-500"
-      >
+      <Badge variant="outline" className="border-yellow-500/20 bg-yellow-500/10 text-yellow-500">
         Low Stock
       </Badge>
     );
   }
   return (
-    <Badge
-      variant="outline"
-      className="border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-    >
+    <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-500">
       In Stock
     </Badge>
   );
 }
 
-// ─── Edit Variant Dialog ───
 function EditVariantDialog({ item }: { item: InventoryItem }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -500,14 +424,10 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
   const [sku, setSku] = useState(item.variant.sku);
   const [quantity, setQuantity] = useState(item.quantity);
   const sizeOptions =
-    size &&
-    !INVENTORY_SIZE_OPTIONS.includes(
-      size as (typeof INVENTORY_SIZE_OPTIONS)[number],
-    )
+    size && !INVENTORY_SIZE_OPTIONS.includes(size as (typeof INVENTORY_SIZE_OPTIONS)[number])
       ? [size, ...INVENTORY_SIZE_OPTIONS]
       : [...INVENTORY_SIZE_OPTIONS];
 
-  // Reset form when dialog opens
   function handleOpenChange(next: boolean) {
     if (next) {
       setImage(item.variant.image || item.variant.product.image || null);
@@ -538,19 +458,13 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-white"
-        >
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
           <Pencil className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md border-zinc-800 bg-zinc-950">
         <DialogHeader>
-          <DialogTitle className="text-white">
-            Edit — {item.variant.product.name}
-          </DialogTitle>
+          <DialogTitle className="text-white">Edit — {item.variant.product.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {/* Image */}
@@ -611,8 +525,7 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
               className="border-zinc-800 bg-zinc-900 text-white"
             />
             <p className="text-xs text-zinc-600">
-              Reorder level is managed at the product level and applies to all
-              variants.
+              Reorder level is managed at the product level and applies to all variants.
             </p>
           </div>
 
@@ -622,11 +535,7 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
             disabled={saving}
             className="w-full bg-white text-black hover:bg-zinc-200"
           >
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              "Save Changes"
-            )}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
           </Button>
         </div>
       </DialogContent>
@@ -634,7 +543,7 @@ function EditVariantDialog({ item }: { item: InventoryItem }) {
   );
 }
 
-// ─── Delete Variant Button ───
+// Delete Variant Button
 function DeleteVariantButton({ item }: { item: InventoryItem }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -670,11 +579,7 @@ function DeleteVariantButton({ item }: { item: InventoryItem }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-red-400"
-        >
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-red-400">
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
@@ -686,15 +591,13 @@ function DeleteVariantButton({ item }: { item: InventoryItem }) {
           <div className="flex items-center gap-2">
             <p className="text-sm text-zinc-400">You are about to archive:</p>
             <p className="text-sm font-medium text-white">
-              {item.variant.product.name} — {item.variant.size} /{" "}
-              {item.variant.color}
+              {item.variant.product.name} — {item.variant.size} / {item.variant.color}
             </p>
           </div>
           <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3">
             <p className="text-sm text-yellow-200">
-              Archiving removes this variant from the active catalog and
-              inventory. If there are still active orders linked to it, the
-              action will be blocked.
+              Archiving removes this variant from the active catalog and inventory. If there are
+              still active orders linked to it, the action will be blocked.
             </p>
           </div>
           <div className="flex justify-end gap-2 pt-1">
@@ -712,11 +615,7 @@ function DeleteVariantButton({ item }: { item: InventoryItem }) {
               disabled={deleting}
               className="bg-yellow-500 text-black hover:bg-yellow-400 enabled:hover:bg-yellow-400!"
             >
-              {deleting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Archive Variant"
-              )}
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Archive Variant"}
             </Button>
           </div>
         </div>

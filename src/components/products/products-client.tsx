@@ -93,18 +93,17 @@ export function ProductsClient({ products }: { products: Product[] }) {
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.category.toLowerCase().includes(search.toLowerCase());
 
-    const matchesView =
-      view === "all" || (view === "active" ? p.isActive : !p.isActive);
+    const matchesView = view === "all" || (view === "active" ? p.isActive : !p.isActive);
 
     return matchesSearch && matchesView;
   });
 
   return (
     <div className="space-y-4">
-      {/* Toolbar: search + add button */}
+      {/* Toolbar */}
       <div className="flex items-center justify-between gap-4">
         <div className="relative w-full max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white" />
           <Input
             placeholder="Search products..."
             value={search}
@@ -114,10 +113,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
         </div>
         <AddProductDialog />
       </div>
-      <Tabs
-        value={view}
-        onValueChange={(value) => setView(value as ProductView)}
-      >
+      <Tabs value={view} onValueChange={(value) => setView(value as ProductView)}>
         <TabsList className="bg-zinc-900">
           <TabsTrigger value="active">Active ({activeCount})</TabsTrigger>
           <TabsTrigger value="archived">Archived ({archivedCount})</TabsTrigger>
@@ -150,9 +146,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
                       {/* Expand/collapse variants */}
                       <button
                         onClick={() =>
-                          setExpandedProduct(
-                            expandedProduct === product.id ? null : product.id,
-                          )
+                          setExpandedProduct(expandedProduct === product.id ? null : product.id)
                         }
                         className="text-zinc-500 hover:text-white"
                       >
@@ -179,14 +173,9 @@ export function ProductsClient({ products }: { products: Product[] }) {
                         )}
                       </div>
                       <div>
-                        <CardTitle className="text-base text-white">
-                          {product.name}
-                        </CardTitle>
+                        <CardTitle className="text-base text-white">{product.name}</CardTitle>
                         <div className="mt-1 flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className="border-zinc-700 text-zinc-400"
-                          >
+                          <Badge variant="outline" className="border-zinc-700 text-zinc-400">
                             {product.category}
                           </Badge>
                           <span className="text-sm text-zinc-500">
@@ -209,10 +198,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
                     </div>
                     <div className="flex items-center gap-2">
                       {!product.isActive && (
-                        <Badge
-                          variant="outline"
-                          className="border-red-500/20 text-red-500"
-                        >
+                        <Badge variant="outline" className="border-red-500/20 text-red-500">
                           Inactive
                         </Badge>
                       )}
@@ -231,9 +217,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
                   <CardContent className="border-t border-zinc-800 pt-4">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-zinc-400">
-                          Variants
-                        </h4>
+                        <h4 className="text-sm font-medium text-zinc-400">Variants</h4>
                         <AddVariantDialog
                           productId={product.id}
                           productReorderLevel={product.reorderLevel}
@@ -254,9 +238,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
                                 <th className="pb-2 font-medium">SKU</th>
                                 <th className="pb-2 font-medium">Size</th>
                                 <th className="pb-2 font-medium">Color</th>
-                                <th className="pb-2 font-medium">
-                                  Variant Price
-                                </th>
+                                <th className="pb-2 font-medium">Variant Price</th>
                                 <th className="pb-2 font-medium">Stock</th>
                                 <th className="pb-2 font-medium"></th>
                               </tr>
@@ -297,10 +279,7 @@ export function ProductsClient({ products }: { products: Product[] }) {
                                   <td className="py-2 text-white">{v.size}</td>
                                   <td className="py-2 text-white">{v.color}</td>
                                   <td className="py-2 text-zinc-400">
-                                    PHP{" "}
-                                    {(
-                                      product.basePrice + v.priceAdjustment
-                                    ).toFixed(2)}
+                                    PHP {(product.basePrice + v.priceAdjustment).toFixed(2)}
                                   </td>
                                   <td className="py-2">
                                     <StockBadge
@@ -382,8 +361,7 @@ function ProductDeleteDialog({
   }
 
   const totalActiveOrders = impact
-    ? impact.linkedOrdersByStatus.PENDING +
-      impact.linkedOrdersByStatus.PROCESSING
+    ? impact.linkedOrdersByStatus.PENDING + impact.linkedOrdersByStatus.PROCESSING
     : 0;
 
   async function handleConfirm() {
@@ -408,8 +386,7 @@ function ProductDeleteDialog({
     }
   }
 
-  const recommendedAction =
-    impact?.recommendedAction ?? (hasOrderHistory ? "ARCHIVE" : undefined);
+  const recommendedAction = impact?.recommendedAction ?? (hasOrderHistory ? "ARCHIVE" : undefined);
   const isArchiveFlow = recommendedAction === "ARCHIVE";
   const isBlockedFlow = recommendedAction === "BLOCKED";
   const actionLabel = isBlockedFlow
@@ -427,9 +404,7 @@ function ProductDeleteDialog({
         onClick={() => void prepareDialog()}
         disabled={preparingDialog}
         aria-label={
-          preparingDialog
-            ? "Loading product archive options"
-            : "Archive or delete product"
+          preparingDialog ? "Loading product archive options" : "Archive or delete product"
         }
         className="h-8 w-8 text-zinc-500 hover:text-red-400"
       >
@@ -454,24 +429,19 @@ function ProductDeleteDialog({
           <div className="space-y-4">
             {isBlockedFlow ? (
               <p className="text-sm text-zinc-400">
-                <span className="font-medium text-white">{productName}</span> is
-                still used by active orders and cannot be archived yet.
+                <span className="font-medium text-white">{productName}</span> is still used by
+                active orders and cannot be archived yet.
               </p>
             ) : isArchiveFlow ? (
               <div className="space-y-5 pt-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-zinc-400">
-                    You are about to archive:
-                  </p>
-                  <p className="text-sm font-medium text-white">
-                    {productName}
-                  </p>
+                  <p className="text-sm text-zinc-400">You are about to archive:</p>
+                  <p className="text-sm font-medium text-white">{productName}</p>
                 </div>
 
                 <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3">
                   <p className="text-sm text-yellow-200">
-                    This product and all its variants will be hidden from the
-                    active catalog.
+                    This product and all its variants will be hidden from the active catalog.
                   </p>
                 </div>
               </div>
@@ -500,23 +470,14 @@ function ProductDeleteDialog({
                   {statusCards.map(({ key, label, color }) => {
                     const count = impact.linkedOrdersByStatus[key];
                     const percentValue =
-                      totalActiveOrders > 0
-                        ? (count / totalActiveOrders) * 100
-                        : 0;
+                      totalActiveOrders > 0 ? (count / totalActiveOrders) * 100 : 0;
                     const percentLabel = `${percentValue.toFixed(1)}%`;
 
                     return (
-                      <div
-                        key={key}
-                        className="rounded-lg border border-zinc-800 bg-zinc-900 p-3"
-                      >
+                      <div key={key} className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-zinc-400">
-                            {label}
-                          </span>
-                          <span className="text-sm font-semibold text-white">
-                            {count}
-                          </span>
+                          <span className="text-xs font-medium text-zinc-400">{label}</span>
+                          <span className="text-sm font-semibold text-white">{count}</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                           <div
@@ -532,9 +493,7 @@ function ProductDeleteDialog({
                             aria-valuenow={Number(percentValue.toFixed(1))}
                           />
                         </div>
-                        <p className="mt-1 text-right text-xs text-zinc-500">
-                          {percentLabel}
-                        </p>
+                        <p className="mt-1 text-right text-xs text-zinc-500">{percentLabel}</p>
                       </div>
                     );
                   })}
@@ -544,7 +503,7 @@ function ProductDeleteDialog({
                   <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
                     <div className="mb-2 flex items-center gap-2">
                       <AlertTriangle className="h-3.5 w-3.5 text-yellow-400" />
-                      <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                      <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
                         Variants affected
                       </p>
                     </div>
@@ -559,22 +518,18 @@ function ProductDeleteDialog({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/70 text-zinc-300">
-                          {impact.variants.map((variant: ProductDeleteImpact["variants"][number]) => (
-                            <tr key={variant.id}>
-                              <td className="py-1.5 font-mono">
-                                {variant.sku}
-                              </td>
-                              <td className="py-1.5">
-                                {variant.size} / {variant.color}
-                              </td>
-                              <td className="py-1.5">
-                                {variant.stockQuantity}
-                              </td>
-                              <td className="py-1.5">
-                                {variant.linkedOrderItems}
-                              </td>
-                            </tr>
-                          ))}
+                          {impact.variants.map(
+                            (variant: ProductDeleteImpact["variants"][number]) => (
+                              <tr key={variant.id}>
+                                <td className="py-1.5 font-mono">{variant.sku}</td>
+                                <td className="py-1.5">
+                                  {variant.size} / {variant.color}
+                                </td>
+                                <td className="py-1.5">{variant.stockQuantity}</td>
+                                <td className="py-1.5">{variant.linkedOrderItems}</td>
+                              </tr>
+                            ),
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -601,8 +556,8 @@ function ProductDeleteDialog({
 
             {isBlockedFlow ? (
               <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
-                Complete or cancel the active orders first. This product should
-                stay active until those operations are finished.
+                Complete or cancel the active orders first. This product should stay active until
+                those operations are finished.
               </div>
             ) : null}
 
@@ -642,11 +597,7 @@ function ProductDeleteDialog({
                     : actionLabel
                 }
               >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  actionLabel
-                )}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : actionLabel}
               </Button>
             </div>
           </div>
@@ -775,14 +726,7 @@ function VariantDeleteDialog({
   );
 }
 
-// Color-coded stock badge component
-function StockBadge({
-  quantity,
-  reorderLevel,
-}: {
-  quantity: number;
-  reorderLevel: number;
-}) {
+function StockBadge({ quantity, reorderLevel }: { quantity: number; reorderLevel: number }) {
   const isCritical = quantity === 0;
   const isLow = quantity <= reorderLevel;
 
@@ -802,14 +746,12 @@ function StockBadge({
   );
 }
 
-// Format: first letter uppercase, rest lowercase
 function formatCategory(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 }
 
-// Dialog for adding a new product
 function AddProductDialog() {
   const [open, setOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -851,9 +793,7 @@ function AddProductDialog() {
         setOpen(false);
       } catch (error) {
         setSubmitError(
-          error instanceof Error
-            ? error.message
-            : "Unable to create product. Please try again.",
+          error instanceof Error ? error.message : "Unable to create product. Please try again.",
         );
       }
     },
@@ -906,14 +846,10 @@ function AddProductDialog() {
           </div>
 
           {/* Name */}
-          <form.Field
-            name="name"
-            validators={{ onChange: addProductFormSchema.shape.name }}
-          >
+          <form.Field name="name" validators={{ onChange: addProductFormSchema.shape.name }}>
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -929,9 +865,7 @@ function AddProductDialog() {
                     placeholder="e.g. Classic Round Neck T-Shirt"
                     className="border-zinc-800 bg-zinc-900 text-white"
                   />
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1005,9 +939,7 @@ function AddProductDialog() {
                             placeholder="Enter category name"
                             className="mt-2 border-zinc-800 bg-zinc-900 text-white"
                           />
-                          {error ? (
-                            <p className="text-xs text-red-400">{error}</p>
-                          ) : null}
+                          {error ? <p className="text-xs text-red-400">{error}</p> : null}
                         </>
                       );
                     }}
@@ -1026,8 +958,7 @@ function AddProductDialog() {
           >
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -1045,9 +976,7 @@ function AddProductDialog() {
                     placeholder="0.00"
                     className="border-zinc-800 bg-zinc-900 text-white"
                   />
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1061,14 +990,11 @@ function AddProductDialog() {
           >
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
-                  <Label className="text-zinc-400">
-                    Reorder Level (All Variants)
-                  </Label>
+                  <Label className="text-zinc-400">Reorder Level (All Variants)</Label>
                   <Input
                     name={field.name}
                     type="number"
@@ -1082,9 +1008,7 @@ function AddProductDialog() {
                     placeholder="10"
                     className="border-zinc-800 bg-zinc-900 text-white"
                   />
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1099,27 +1023,17 @@ function AddProductDialog() {
           {/* Submit */}
           <form.Subscribe
             selector={(state) =>
-              [
-                state.isSubmitting,
-                state.values.name,
-                state.values.basePrice,
-              ] as const
+              [state.isSubmitting, state.values.name, state.values.basePrice] as const
             }
           >
             {([isSubmitting, name, basePrice]) => (
               <Button
                 type="submit"
                 disabled={isSubmitting || !name.trim() || !basePrice.trim()}
-                aria-label={
-                  isSubmitting ? "Creating product" : "Create Product"
-                }
+                aria-label={isSubmitting ? "Creating product" : "Create Product"}
                 className="w-full bg-white text-black hover:bg-zinc-200"
               >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Create Product"
-                )}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Product"}
               </Button>
             )}
           </form.Subscribe>
@@ -1135,9 +1049,7 @@ function EditProductDialog({ product }: { product: Product }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const getInitialValues = () => {
-    const selectedCategory = isProductCategory(product.category)
-      ? product.category
-      : "Other";
+    const selectedCategory = isProductCategory(product.category) ? product.category : "Other";
 
     return {
       selectedCategory,
@@ -1177,9 +1089,7 @@ function EditProductDialog({ product }: { product: Product }) {
         setOpen(false);
       } catch (error) {
         setSubmitError(
-          error instanceof Error
-            ? error.message
-            : "Unable to save product. Please try again.",
+          error instanceof Error ? error.message : "Unable to save product. Please try again.",
         );
       }
     },
@@ -1196,15 +1106,11 @@ function EditProductDialog({ product }: { product: Product }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-zinc-500 hover:text-white"
-        >
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white">
           <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden border-zinc-800 bg-zinc-950">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-x-hidden overflow-y-auto border-zinc-800 bg-zinc-950">
         <DialogHeader>
           <DialogTitle className="text-white">Edit Product</DialogTitle>
         </DialogHeader>
@@ -1221,9 +1127,7 @@ function EditProductDialog({ product }: { product: Product }) {
             {(field) => (
               <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-medium text-white">
-                    Active Status
-                  </Label>
+                  <Label className="text-sm font-medium text-white">Active Status</Label>
                   <p className="text-xs text-zinc-500">
                     Inactive products are hidden from the store.
                   </p>
@@ -1258,14 +1162,10 @@ function EditProductDialog({ product }: { product: Product }) {
           </div>
 
           {/* Name */}
-          <form.Field
-            name="name"
-            validators={{ onChange: editProductFormSchema.shape.name }}
-          >
+          <form.Field name="name" validators={{ onChange: editProductFormSchema.shape.name }}>
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -1281,9 +1181,7 @@ function EditProductDialog({ product }: { product: Product }) {
                     placeholder="e.g. Classic Round Neck T-Shirt"
                     className="border-zinc-800 bg-zinc-900 text-white"
                   />
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1357,9 +1255,7 @@ function EditProductDialog({ product }: { product: Product }) {
                             placeholder="Enter category name"
                             className="mt-2 border-zinc-800 bg-zinc-900 text-white"
                           />
-                          {error ? (
-                            <p className="text-xs text-red-400">{error}</p>
-                          ) : null}
+                          {error ? <p className="text-xs text-red-400">{error}</p> : null}
                         </>
                       );
                     }}
@@ -1378,8 +1274,7 @@ function EditProductDialog({ product }: { product: Product }) {
           >
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -1397,9 +1292,7 @@ function EditProductDialog({ product }: { product: Product }) {
                     placeholder="0.00"
                     className="border-zinc-800 bg-zinc-900 text-white"
                   />
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1414,11 +1307,7 @@ function EditProductDialog({ product }: { product: Product }) {
           {/* Submit */}
           <form.Subscribe
             selector={(state) =>
-              [
-                state.isSubmitting,
-                state.values.name,
-                state.values.basePrice,
-              ] as const
+              [state.isSubmitting, state.values.name, state.values.basePrice] as const
             }
           >
             {([isSubmitting, name, basePrice]) => (
@@ -1428,11 +1317,7 @@ function EditProductDialog({ product }: { product: Product }) {
                 aria-label={isSubmitting ? "Saving product" : "Save Changes"}
                 className="w-full bg-white text-black hover:bg-zinc-200"
               >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Save Changes"
-                )}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
               </Button>
             )}
           </form.Subscribe>
@@ -1485,9 +1370,7 @@ function AddVariantDialog({
         setOpen(false);
       } catch (error) {
         setSubmitError(
-          error instanceof Error
-            ? error.message
-            : "Failed to add variant. Please try again.",
+          error instanceof Error ? error.message : "Failed to add variant. Please try again.",
         );
       }
     },
@@ -1547,14 +1430,10 @@ function AddVariantDialog({
 
           {/* Size & Color */}
           <div className="grid grid-cols-2 gap-3">
-            <form.Field
-              name="size"
-              validators={{ onChange: addVariantFormSchema.shape.size }}
-            >
+            <form.Field name="size" validators={{ onChange: addVariantFormSchema.shape.size }}>
               {(field) => {
                 const error =
-                  field.state.meta.isTouched &&
-                  firstErrorMessage(field.state.meta.errors);
+                  field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
                 return (
                   <div className="space-y-2">
@@ -1572,21 +1451,15 @@ function AddVariantDialog({
                       placeholder="e.g. M, L, XL"
                       className="border-zinc-800 bg-zinc-900 text-white"
                     />
-                    {error ? (
-                      <p className="text-xs text-red-400">{error}</p>
-                    ) : null}
+                    {error ? <p className="text-xs text-red-400">{error}</p> : null}
                   </div>
                 );
               }}
             </form.Field>
-            <form.Field
-              name="color"
-              validators={{ onChange: addVariantFormSchema.shape.color }}
-            >
+            <form.Field name="color" validators={{ onChange: addVariantFormSchema.shape.color }}>
               {(field) => {
                 const error =
-                  field.state.meta.isTouched &&
-                  firstErrorMessage(field.state.meta.errors);
+                  field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
                 return (
                   <div className="space-y-2">
@@ -1604,9 +1477,7 @@ function AddVariantDialog({
                       placeholder="e.g. Black, White"
                       className="border-zinc-800 bg-zinc-900 text-white"
                     />
-                    {error ? (
-                      <p className="text-xs text-red-400">{error}</p>
-                    ) : null}
+                    {error ? <p className="text-xs text-red-400">{error}</p> : null}
                   </div>
                 );
               }}
@@ -1614,14 +1485,10 @@ function AddVariantDialog({
           </div>
 
           {/* SKU */}
-          <form.Field
-            name="sku"
-            validators={{ onChange: addVariantFormSchema.shape.sku }}
-          >
+          <form.Field name="sku" validators={{ onChange: addVariantFormSchema.shape.sku }}>
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -1639,9 +1506,7 @@ function AddVariantDialog({
                     placeholder="e.g. TS-BLK-M"
                     className="border-zinc-800 bg-zinc-900 font-mono text-white"
                   />
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1656,14 +1521,11 @@ function AddVariantDialog({
           >
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
-                  <Label className="text-zinc-400">
-                    Variant Price (Optional)
-                  </Label>
+                  <Label className="text-zinc-400">Variant Price (Optional)</Label>
                   <Input
                     name={field.name}
                     type="number"
@@ -1678,12 +1540,8 @@ function AddVariantDialog({
                     placeholder={productBasePrice.toFixed(2)}
                     className="border-zinc-800 bg-zinc-900 text-white"
                   />
-                  <p className="text-xs text-zinc-600">
-                    Leave blank to use the base price.
-                  </p>
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  <p className="text-xs text-zinc-600">Leave blank to use the base price.</p>
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1691,10 +1549,7 @@ function AddVariantDialog({
 
           <p className="rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
             Low-stock level for this product is{" "}
-            <span className="font-semibold text-white">
-              {productReorderLevel}
-            </span>
-            .
+            <span className="font-semibold text-white">{productReorderLevel}</span>.
           </p>
 
           {submitError ? (
@@ -1706,28 +1561,17 @@ function AddVariantDialog({
           {/* Submit */}
           <form.Subscribe
             selector={(state) =>
-              [
-                state.isSubmitting,
-                state.values.size,
-                state.values.color,
-                state.values.sku,
-              ] as const
+              [state.isSubmitting, state.values.size, state.values.color, state.values.sku] as const
             }
           >
             {([isSubmitting, size, color, sku]) => (
               <Button
                 type="submit"
-                disabled={
-                  isSubmitting || !size.trim() || !color.trim() || !sku.trim()
-                }
+                disabled={isSubmitting || !size.trim() || !color.trim() || !sku.trim()}
                 aria-label={isSubmitting ? "Adding variant" : "Add Variant"}
                 className="w-full bg-white text-black hover:bg-zinc-200"
               >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Add Variant"
-                )}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Variant"}
               </Button>
             )}
           </form.Subscribe>
@@ -1779,9 +1623,7 @@ function EditVariantDialog({
         setOpen(false);
       } catch (error) {
         setSubmitError(
-          error instanceof Error
-            ? error.message
-            : "Failed to update variant. Please try again.",
+          error instanceof Error ? error.message : "Failed to update variant. Please try again.",
         );
       }
     },
@@ -1839,14 +1681,10 @@ function EditVariantDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <form.Field
-              name="size"
-              validators={{ onChange: addVariantFormSchema.shape.size }}
-            >
+            <form.Field name="size" validators={{ onChange: addVariantFormSchema.shape.size }}>
               {(field) => {
                 const error =
-                  field.state.meta.isTouched &&
-                  firstErrorMessage(field.state.meta.errors);
+                  field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
                 return (
                   <div className="space-y-2">
@@ -1864,21 +1702,15 @@ function EditVariantDialog({
                       placeholder="e.g. M, L, XL"
                       className="border-zinc-800 bg-zinc-900 text-white"
                     />
-                    {error ? (
-                      <p className="text-xs text-red-400">{error}</p>
-                    ) : null}
+                    {error ? <p className="text-xs text-red-400">{error}</p> : null}
                   </div>
                 );
               }}
             </form.Field>
-            <form.Field
-              name="color"
-              validators={{ onChange: addVariantFormSchema.shape.color }}
-            >
+            <form.Field name="color" validators={{ onChange: addVariantFormSchema.shape.color }}>
               {(field) => {
                 const error =
-                  field.state.meta.isTouched &&
-                  firstErrorMessage(field.state.meta.errors);
+                  field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
                 return (
                   <div className="space-y-2">
@@ -1896,23 +1728,17 @@ function EditVariantDialog({
                       placeholder="e.g. Black, White"
                       className="border-zinc-800 bg-zinc-900 text-white"
                     />
-                    {error ? (
-                      <p className="text-xs text-red-400">{error}</p>
-                    ) : null}
+                    {error ? <p className="text-xs text-red-400">{error}</p> : null}
                   </div>
                 );
               }}
             </form.Field>
           </div>
 
-          <form.Field
-            name="sku"
-            validators={{ onChange: addVariantFormSchema.shape.sku }}
-          >
+          <form.Field name="sku" validators={{ onChange: addVariantFormSchema.shape.sku }}>
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
@@ -1930,9 +1756,7 @@ function EditVariantDialog({
                     placeholder="e.g. TS-BLK-M"
                     className="border-zinc-800 bg-zinc-900 font-mono text-white"
                   />
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1946,14 +1770,11 @@ function EditVariantDialog({
           >
             {(field) => {
               const error =
-                field.state.meta.isTouched &&
-                firstErrorMessage(field.state.meta.errors);
+                field.state.meta.isTouched && firstErrorMessage(field.state.meta.errors);
 
               return (
                 <div className="space-y-2">
-                  <Label className="text-zinc-400">
-                    Variant Price (Optional)
-                  </Label>
+                  <Label className="text-zinc-400">Variant Price (Optional)</Label>
                   <Input
                     name={field.name}
                     type="number"
@@ -1968,12 +1789,8 @@ function EditVariantDialog({
                     placeholder={productBasePrice.toFixed(2)}
                     className="border-zinc-800 bg-zinc-900 text-white"
                   />
-                  <p className="text-xs text-zinc-600">
-                    Leave blank to use the base price.
-                  </p>
-                  {error ? (
-                    <p className="text-xs text-red-400">{error}</p>
-                  ) : null}
+                  <p className="text-xs text-zinc-600">Leave blank to use the base price.</p>
+                  {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
               );
             }}
@@ -1987,28 +1804,17 @@ function EditVariantDialog({
 
           <form.Subscribe
             selector={(state) =>
-              [
-                state.isSubmitting,
-                state.values.size,
-                state.values.color,
-                state.values.sku,
-              ] as const
+              [state.isSubmitting, state.values.size, state.values.color, state.values.sku] as const
             }
           >
             {([isSubmitting, size, color, sku]) => (
               <Button
                 type="submit"
-                disabled={
-                  isSubmitting || !size.trim() || !color.trim() || !sku.trim()
-                }
+                disabled={isSubmitting || !size.trim() || !color.trim() || !sku.trim()}
                 aria-label={isSubmitting ? "Saving variant" : "Save Variant"}
                 className="w-full bg-white text-black hover:bg-zinc-200"
               >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Save Variant"
-                )}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Variant"}
               </Button>
             )}
           </form.Subscribe>

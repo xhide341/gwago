@@ -1,4 +1,5 @@
-// In-memory mock database store for demo mode (no PostgreSQL / Supabase connection required)
+// for demo mode
+import { CATALOG_PRODUCTS } from "./catalog-data";
 
 export type Role = "ADMIN" | "SUPER_ADMIN";
 export type OrderStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED";
@@ -97,7 +98,6 @@ export interface Transaction {
   createdAt: Date;
 }
 
-// ─── Query Result / Composite Types ───
 export type SelectedVariant = Pick<Variant, "id" | "sku" | "size" | "color"> & {
   product: Pick<Product, "id" | "name">;
 };
@@ -137,7 +137,6 @@ class MockStore {
   }
 
   private seed() {
-    // Demo admin user
     this.users.push({
       id: "guest-id",
       name: "Guest User",
@@ -149,66 +148,58 @@ class MockStore {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-
-    const PRODUCTS_DATA = [
-      { name: "Elite Basketball Jersey", category: "Jersey", basePrice: 680, description: "Premium basketball jersey with full sublimation print", image: "https://picsum.photos/seed/elite-basketball-jersey/400/400" },
-      { name: "Pro Cycling Jersey", category: "Jersey", basePrice: 790, description: "Race-cut cycling jersey with breathable side panels", image: "https://picsum.photos/seed/pro-cycling-jersey/400/400" },
-      { name: "Esports Team Jersey", category: "Jersey", basePrice: 620, description: "Lightweight team jersey for gaming squads and events", image: "https://picsum.photos/seed/esports-team-jersey/400/400" },
-      { name: "Streetwear Graphic Tee", category: "T shirt", basePrice: 370, description: "Relaxed fit t-shirt for bold front-and-back prints", image: "https://picsum.photos/seed/streetwear-graphic-tee/400/400" },
-      { name: "Performance Dry-Fit Tee", category: "T shirt", basePrice: 430, description: "Moisture-wicking fabric designed for training sessions", image: "https://picsum.photos/seed/performance-dryfit-tee/400/400" },
-      { name: "Vintage Wash Tee", category: "T shirt", basePrice: 410, description: "Washed cotton tee with a soft hand-feel finish", image: "https://picsum.photos/seed/vintage-wash-tee/400/400" },
-      { name: "UV Guard Long Sleeve", category: "Long sleeve", basePrice: 560, description: "Long sleeve top with UV protection and quick dry fabric", image: "https://picsum.photos/seed/uv-guard-longsleeve/400/400" },
-      { name: "Training Long Sleeve", category: "Long sleeve", basePrice: 500, description: "Athletic long sleeve built for cooler training days", image: "https://picsum.photos/seed/training-longsleeve/400/400" },
-      { name: "Hospitality Uniform Polo", category: "Uniform", basePrice: 470, description: "Durable and breathable uniform polo for service teams", image: "https://picsum.photos/seed/hospitality-uniform-polo/400/400" },
-      { name: "Industrial Work Uniform", category: "Uniform", basePrice: 720, description: "Heavy-duty uniform set for warehouse and field staff", image: "https://picsum.photos/seed/industrial-work-uniform/400/400" },
-      { name: "Clinic Staff Uniform", category: "Uniform", basePrice: 540, description: "Comfort-fit uniform for clinic and wellness teams", image: "https://picsum.photos/seed/clinic-staff-uniform/400/400" },
-      { name: "Premium Polo Shirt", category: "Polo shirt", basePrice: 580, description: "Structured polo shirt ideal for uniforms and events", image: "https://picsum.photos/seed/premium-polo-shirt/400/400" },
-    ];
-
-    const SIZES = ["S", "M", "L", "XL", "2XL"];
-    const COLORS = ["Black", "White", "Navy", "Red", "Royal Blue", "Maroon", "Gray"];
     const CUSTOMER_NAMES = [
-      "Juan Dela Cruz", "Maria Santos", "Jose Reyes", "Ana Garcia", "Pedro Mendoza",
-      "Sofia Cruz", "Miguel Torres", "Isabella Ramos", "Carlos Villanueva", "Angela Bautista",
+      "Juan Dela Cruz",
+      "Maria Santos",
+      "Jose Reyes",
+      "Ana Garcia",
+      "Pedro Mendoza",
+      "Sofia Cruz",
+      "Miguel Torres",
+      "Isabella Ramos",
+      "Carlos Villanueva",
+      "Angela Bautista",
     ];
 
-    let prodIdCounter = 1;
     let varIdCounter = 1;
     let stockIdCounter = 1;
 
-    for (const prodData of PRODUCTS_DATA) {
-      const pId = `prod_${prodIdCounter++}`;
+    for (const catProd of CATALOG_PRODUCTS) {
+      const pId = catProd.id;
       const product: Product = {
         id: pId,
-        name: prodData.name,
-        description: prodData.description,
-        category: prodData.category,
-        basePrice: prodData.basePrice,
+        name: catProd.name,
+        description: catProd.description,
+        category: catProd.category,
+        basePrice: catProd.price,
         reorderLevel: 10,
-        image: prodData.image,
+        image: catProd.frontImage.src,
         isActive: true,
         createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000),
         updatedAt: new Date(),
       };
       this.products.push(product);
 
-      // Create variants & stocks
-      const sizes = SIZES.slice(0, 3);
-      const colors = COLORS.slice(0, 2);
+      const sizes = catProd.sizes;
+      const colors = ["Black", "White", "Navy"];
 
       for (const size of sizes) {
         for (const color of colors) {
           const vId = `var_${varIdCounter++}`;
-          const sku = `${prodData.name.replace(/\s+/g, "-").toUpperCase().slice(0, 8)}-${size}-${color.toUpperCase().slice(0, 3)}`;
-          const priceAdj = size === "2XL" ? 50 : size === "XL" ? 25 : 0;
-          
+          const prefix = catProd.name
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .toUpperCase()
+            .slice(0, 6);
+          const sku = `GW-${prefix}-${size}-${color.toUpperCase().slice(0, 3)}`;
+          const priceAdj = size === "3XL" ? 75 : size === "2XL" ? 50 : size === "XL" ? 25 : 0;
+
           const variant: Variant = {
             id: vId,
             productId: pId,
             size,
             color,
             sku: `${sku}-${100 + varIdCounter}`,
-            image: null,
+            image: catProd.frontImage.src,
             priceAdjustment: priceAdj,
             isActive: true,
             archivedAt: null,
@@ -217,7 +208,7 @@ class MockStore {
           };
           this.variants.push(variant);
 
-          const qty = (varIdCounter % 5 === 0) ? 5 : 25 + (varIdCounter % 30);
+          const qty = varIdCounter % 5 === 0 ? 5 : 25 + (varIdCounter % 30);
           const stock: InventoryStock = {
             id: `stock_${stockIdCounter++}`,
             variantId: vId,
@@ -232,12 +223,17 @@ class MockStore {
       }
     }
 
-    // Seed orders
     let orderIdCounter = 1;
     let orderItemIdCounter = 1;
     let txIdCounter = 1;
 
-    const statuses: OrderStatus[] = ["PENDING", "PROCESSING", "COMPLETED", "COMPLETED", "COMPLETED"];
+    const statuses: OrderStatus[] = [
+      "PENDING",
+      "PROCESSING",
+      "COMPLETED",
+      "COMPLETED",
+      "COMPLETED",
+    ];
     const channels: SalesChannel[] = ["DIRECT", "SHOPEE", "LAZADA", "TIKTOK"];
     const methods: PaymentMethod[] = ["CASH", "GCASH", "BANK_TRANSFER"];
 
@@ -302,7 +298,12 @@ class MockStore {
           amount: totalAmount,
           type: "PAYMENT",
           method,
-          reference: method === "GCASH" ? `GC${100000000 + i}` : method === "BANK_TRANSFER" ? `BT${100000000 + i}` : null,
+          reference:
+            method === "GCASH"
+              ? `GC${100000000 + i}`
+              : method === "BANK_TRANSFER"
+                ? `BT${100000000 + i}`
+                : null,
           createdAt: orderDate,
         };
         this.transactions.push(tx);
