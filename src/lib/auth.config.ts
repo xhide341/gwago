@@ -4,6 +4,7 @@ import type { NextAuthConfig } from "next-auth";
 const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
 
 export default {
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/",

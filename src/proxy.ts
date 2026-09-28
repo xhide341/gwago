@@ -13,6 +13,10 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/admin", req.nextUrl));
   }
 
+  if (pathname.startsWith("/admin") && !isLoggedIn) {
+    return NextResponse.redirect(new URL("/login", req.nextUrl));
+  }
+
   if (pathname.startsWith("/api/upload") && !isLoggedIn) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

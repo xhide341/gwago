@@ -2,7 +2,6 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { SelectedVariant } from "@/lib/mock-store";
 import { revalidatePath } from "next/cache";
 import { OrderStatus, PaymentMethod, Prisma, SalesChannel } from "@/generated/prisma/client";
 
@@ -300,9 +299,7 @@ export async function createOrder(data: {
         product: { select: { id: true, name: true } },
       },
     });
-    const variantMap = new Map<string, SelectedVariant>(
-      variants.map((v: SelectedVariant) => [v.id, v]),
-    );
+    const variantMap = new Map(variants.map((v) => [v.id, v]));
 
     return tx.order.create({
       data: {
@@ -501,9 +498,7 @@ export async function updateOrder(
         product: { select: { id: true, name: true } },
       },
     });
-    const newVariantMap = new Map<string, SelectedVariant>(
-      newVariants.map((v: SelectedVariant) => [v.id, v]),
-    );
+    const newVariantMap = new Map(newVariants.map((v) => [v.id, v]));
 
     await tx.order.update({
       where: { id },

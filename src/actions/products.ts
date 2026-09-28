@@ -2,14 +2,9 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Product, ProductVariantImpact } from "@/lib/mock-store";
 import { revalidatePath } from "next/cache";
-import {
-  getProductDeleteSummary,
-  getVariantDeleteDecision,
-} from "@/lib/catalog-delete";
+import { getProductDeleteSummary, getVariantDeleteDecision } from "@/lib/catalog-delete";
 
-// ─── Auth guard helper ───
 async function requireAuth() {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
@@ -17,7 +12,7 @@ async function requireAuth() {
 }
 
 async function archiveProductAndVariants(productId: string) {
-  await prisma.$transaction(async (tx: typeof prisma) => {
+  await prisma.$transaction(async (tx) => {
     await tx.product.update({
       where: { id: productId },
       data: { isActive: false },
@@ -104,8 +99,8 @@ export async function getProductDeleteImpact(id: string) {
 
   const deleteSummary = await getProductDeleteSummary(id);
 
-  const stockRecords = product.variants.filter(
-    (variant: ProductVariantImpact) => Boolean(variant.stock),
+  const stockRecords = product.variants.filter((variant) =>
+    Boolean(variant.stock),
   ).length;
 
   return {
@@ -120,7 +115,7 @@ export async function getProductDeleteImpact(id: string) {
     linkedOrdersByStatus: deleteSummary.linkedOrdersByStatus,
     canDeletePermanently: deleteSummary.linkedOrderItems === 0,
     recommendedAction: deleteSummary.recommendedAction,
-    variants: product.variants.map((variant: ProductVariantImpact) => ({
+    variants: product.variants.map((variant) => ({
       id: variant.id,
       sku: variant.sku,
       size: variant.size,
@@ -160,7 +155,7 @@ export async function updateProduct(id: string, formData: FormData) {
 
   const nextIsActive = formData.get("isActive") === "true";
 
-  await prisma.$transaction(async (tx: typeof prisma) => {
+  await prisma.$transaction(async (tx) => {
     await tx.product.update({
       where: { id },
       data: {
@@ -261,16 +256,13 @@ export async function createVariant(formData: FormData) {
   if (!product) throw new Error("Product not found");
 
   const variantPriceRaw = (formData.get("variantPrice") as string) || "";
-  const variantPrice = variantPriceRaw.trim()
-    ? parseFloat(variantPriceRaw)
-    : product.basePrice;
+  const variantPrice = variantPriceRaw.trim() ? parseFloat(variantPriceRaw) : product.basePrice;
 
   if (!Number.isFinite(variantPrice) || variantPrice < 0) {
     throw new Error("Variant price must be a valid non-negative number.");
   }
 
-  const priceAdjustment =
-    Math.round((variantPrice - product.basePrice) * 100) / 100;
+  const priceAdjustment = Math.round((variantPrice - product.basePrice) * 100) / 100;
 
   const variant = await prisma.variant.create({
     data: {
@@ -315,16 +307,13 @@ export async function updateVariant(id: string, formData: FormData) {
   if (!product) throw new Error("Product not found");
 
   const variantPriceRaw = (formData.get("variantPrice") as string) || "";
-  const variantPrice = variantPriceRaw.trim()
-    ? parseFloat(variantPriceRaw)
-    : product.basePrice;
+  const variantPrice = variantPriceRaw.trim() ? parseFloat(variantPriceRaw) : product.basePrice;
 
   if (!Number.isFinite(variantPrice) || variantPrice < 0) {
     throw new Error("Variant price must be a valid non-negative number.");
   }
 
-  const priceAdjustment =
-    Math.round((variantPrice - product.basePrice) * 100) / 100;
+  const priceAdjustment = Math.round((variantPrice - product.basePrice) * 100) / 100;
 
   await prisma.variant.update({
     where: { id },
@@ -442,7 +431,7 @@ export async function getArchivedProducts() {
   });
 
   return Promise.all(
-    products.map(async (product: Product) => {
+    products.map(async (product) => {
       const summary = await getProductDeleteSummary(product.id);
 
       return {
@@ -487,7 +476,7 @@ export async function getArchivedVariants() {
 export async function restoreProduct(id: string): Promise<{ message: string }> {
   await requireAuth();
 
-  await prisma.$transaction(async (tx: typeof prisma) => {
+  await prisma.$transaction(async (tx) => {
     await tx.product.update({
       where: { id },
       data: { isActive: true },
@@ -536,4 +525,3 @@ export async function permanentlyDeleteProduct(id: string): Promise<{
   revalidatePath("/admin");
   return { status: "deleted", message: "Product permanently deleted." };
 }
-

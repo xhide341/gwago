@@ -2,7 +2,6 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { OrderStatusGroup, PaymentMethodGroup, Product } from "@/lib/mock-store";
 
 export type DailyRevenue = { date: string; revenue: number; orders: number };
 export type CategoryBreakdown = {
@@ -98,7 +97,7 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
     _count: { _all: true },
   });
 
-  const orderStatusDist: OrderStatusDist[] = statusGroups.map((g: OrderStatusGroup) => ({
+  const orderStatusDist: OrderStatusDist[] = statusGroups.map((g) => ({
     status: g.status,
     count: g._count._all,
   }));
@@ -121,7 +120,7 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
   ]);
 
   const catMap = new Map<string, { count: number; revenue: number }>(
-    productCategories.map((p: Pick<Product, "category">) => [p.category, { count: 0, revenue: 0 }]),
+    productCategories.map((p) => [p.category, { count: 0, revenue: 0 }]),
   );
   for (const oi of orderItems) {
     const cat = oi.variant?.product.category ?? "Uncategorized";
@@ -134,7 +133,7 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
   const categoryBreakdown: CategoryBreakdown[] = [...catMap.entries()]
     .map(([category, { count, revenue }]) => ({ category, count, revenue }))
     .sort(
-      (a: CategoryBreakdown, b: CategoryBreakdown) =>
+      (a, b) =>
         b.revenue - a.revenue || a.category.localeCompare(b.category),
     );
 
@@ -146,12 +145,12 @@ export async function getChartData(input: DateRangeInput): Promise<ChartData> {
   });
 
   const paymentMethodDist: PaymentMethodDist[] = methodGroups
-    .map((g: PaymentMethodGroup) => ({
+    .map((g) => ({
       method: g.method,
       count: g._count._all,
       amount: g._sum.amount ?? 0,
     }))
-    .sort((a: PaymentMethodDist, b: PaymentMethodDist) => b.amount - a.amount);
+    .sort((a, b) => b.amount - a.amount);
 
   return {
     dailyRevenue,
